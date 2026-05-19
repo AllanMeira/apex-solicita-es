@@ -33,13 +33,21 @@ export async function signOut() {
 
 export async function getProfile(userId) {
   try {
-    const { data } = await supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
+
+    const { data, error } = await supabase
       .from("profiles")
-      .select("*, team:teams(id,name,color,slug)")
+      .select("id, full_name, email, role, is_active, whatsapp, avatar_url, team_id, teams(id, name, color, slug)")
       .eq("id", userId)
-      .single();
+      .maybeSingle();
+    if (error) {
+      console.error("getProfile error:", error);
+      return null;
+    }
     return data;
-  } catch {
+  } catch (err) {
+    console.error("getProfile exception:", err);
     return null;
   }
 }

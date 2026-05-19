@@ -1269,8 +1269,10 @@ export default function ApexSolicitacoes() {
               setCurrentUser(profile);
               setLoggedIn(true);
               await loadAllData();
-            } else {
+            } else if (profile && !profile.is_active) {
               await api.signOut();
+            } else {
+              console.warn("Perfil não carregado na verificação inicial da sessão.");
             }
           }
         } catch (err) {
@@ -1291,6 +1293,7 @@ export default function ApexSolicitacoes() {
     // Listener de mudança de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth event:', event, 'Session:', !!session);
         try {
           if (event === 'SIGNED_IN' && session) {
             const profile = await api.getProfile(session.user.id);
@@ -1298,9 +1301,11 @@ export default function ApexSolicitacoes() {
               setCurrentUser(profile);
               setLoggedIn(true);
               await loadAllData();
-            } else {
+            } else if (profile && !profile.is_active) {
               await api.signOut();
               showToast('Acesso negado. Usuário não cadastrado ou inativo.', 'error');
+            } else {
+              console.warn("SIGNED_IN recebido, mas perfil ainda não carregou.");
             }
           }
           if (event === 'SIGNED_OUT') {
@@ -1415,17 +1420,27 @@ export default function ApexSolicitacoes() {
 
   const handleLogin = async (email, password) => {
     try {
-      const { session } = await api.signInWithEmail(email, password);
-      if (session) {
-        const profile = await api.getProfile(session.user.id);
-        if (profile && profile.is_active) {
-          setCurrentUser(profile);
-          setLoggedIn(true);
-          await loadAllData();
-        } else {
-          throw new Error('Acesso negado.');
-        }
+      const data = await api.signInWithEmail(email, password);
+      if (!data?.session) throw new Error('Login falhou');
+
+      let profile = null;
+      for (let i = 0; i < 3; i++) {
+        await new Promise(r => setTimeout(r, 500 * (i + 1)));
+        profile = await api.getProfile(data.session.user.id);
+        if (profile) break;
+        console.warn(`Tentativa ${i + 1} de getProfile falhou`);
       }
+
+      if (!profile) {
+        throw new Error('Perfil não encontrado. Contate o administrador.');
+      }
+      if (!profile.is_active) {
+        throw new Error('Usuário desativado. Contate o administrador.');
+      }
+
+      setCurrentUser(profile);
+      setLoggedIn(true);
+      await loadAllData();
     } catch (err) {
       throw err;
     }
