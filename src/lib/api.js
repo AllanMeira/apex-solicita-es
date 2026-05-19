@@ -88,7 +88,14 @@ export async function getRequests() {
 }
 
 export async function createRequest(request) {
-  return unwrap(await supabase.from("requests").insert(request).select().single());
+  const { protocol, ...data } = request;
+  const { data: result, error } = await supabase
+    .from("requests")
+    .insert(data)
+    .select()
+    .single();
+  if (error) throw error;
+  return result;
 }
 
 export async function updateRequest(id, patch) {

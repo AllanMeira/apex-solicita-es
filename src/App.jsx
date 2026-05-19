@@ -901,7 +901,7 @@ function NewRequestView({ currentUser, setView, setRequests, showToast, bp, team
     try {
       await api.createRequest({
         title: form.title,
-        description: form.description,
+        description: form.description || null,
         team_id: form.team_id,
         type_id: form.type_id || null,
         priority: form.priority,
@@ -909,13 +909,13 @@ function NewRequestView({ currentUser, setView, setRequests, showToast, bp, team
         client_name: form.client_name || null,
         requester_id: currentUser.id,
         status: "nova",
-        protocol: "",
       });
       await loadAllData();
       showToast("Solicitação criada com sucesso!");
       setView(currentUser.role === "solicitante" ? "my-requests" : "requests");
     } catch (err) {
-      showToast("Erro ao criar solicitação.", "error");
+      console.error("Erro ao criar solicitação:", err);
+      showToast("Erro ao criar solicitação: " + (err.message || err), "error");
     }
   };
   return (
