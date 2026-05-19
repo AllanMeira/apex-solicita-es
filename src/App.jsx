@@ -1,15 +1,15 @@
-﻿import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { supabase } from "./lib/supabase";
 import * as api from "./lib/api";
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// FONTS â€” Outfit + DM Sans via Google Fonts
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
+// FONTS — Outfit + DM Sans via Google Fonts
+// ─────────────────────────────────────────────
 const FONT_LINK = "https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap";
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// LOGO SVG â€” montanha low-poly Apex
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
+// LOGO SVG — montanha low-poly Apex
+// ─────────────────────────────────────────────
 function ApexLogoMark({ size = 32 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -34,16 +34,16 @@ function ApexLogoFull({ collapsed = false }) {
       {!collapsed && (
         <div>
           <div style={{ color:"#fff", fontFamily:"'Outfit', sans-serif", fontWeight:600, fontSize:14, letterSpacing:"0.06em", lineHeight:1.2 }}>APEX</div>
-          <div style={{ color:"#64748b", fontFamily:"'Outfit', sans-serif", fontWeight:400, fontSize:10, letterSpacing:"0.12em", textTransform:"uppercase" }}>SolicitaÃ§Ãµes</div>
+          <div style={{ color:"#64748b", fontFamily:"'Outfit', sans-serif", fontWeight:400, fontSize:10, letterSpacing:"0.12em", textTransform:"uppercase" }}>Solicitações</div>
         </div>
       )}
     </div>
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// ICONS â€” SVG inline, zero emoji
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
+// ICONS — SVG inline, zero emoji
+// ─────────────────────────────────────────────
 const Icon = ({ name, size=16, color="currentColor", style={} }) => {
   const icons = {
     grid: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
@@ -94,9 +94,9 @@ const Icon = ({ name, size=16, color="currentColor", style={} }) => {
   );
 };
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // RESPONSIVE HOOK
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function useBreakpoint() {
   const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
   useEffect(() => {
@@ -107,9 +107,9 @@ function useBreakpoint() {
   return { isMobile: w < 640, isTablet: w >= 640 && w < 1024, isDesktop: w >= 1024, w };
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // MOCK DATA
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 const TEAMS = [
   { id:"t1", name:"BI", slug:"bi", color:"#6366f1" },
   { id:"t2", name:"Suporte", slug:"suporte", color:"#0ea5e9" },
@@ -123,17 +123,17 @@ const USERS = [
   { id:"u5", full_name:"Juliana Solicitante", email:"juliana@alpesmidia.com", role:"solicitante", team_id:null, whatsapp:null, avatar:null },
 ];
 const REQUEST_TYPES = [
-  { id:"rt1", name:"Novo RelatÃ³rio", team_id:"t1" },
-  { id:"rt2", name:"CorreÃ§Ã£o de Dados", team_id:"t1" },
-  { id:"rt3", name:"Suporte TÃ©cnico", team_id:"t2" },
+  { id:"rt1", name:"Novo Relatório", team_id:"t1" },
+  { id:"rt2", name:"Correção de Dados", team_id:"t1" },
+  { id:"rt3", name:"Suporte Técnico", team_id:"t2" },
   { id:"rt4", name:"Acesso ao Sistema", team_id:"t2" },
   { id:"rt5", name:"Novo Projeto", team_id:"t3" },
   { id:"rt6", name:"Infraestrutura", team_id:"t3" },
-  { id:"rt7", name:"AutomaÃ§Ã£o", team_id:"t3" },
+  { id:"rt7", name:"Automação", team_id:"t3" },
 ];
 const STATUSES = [
   { key:"nova", label:"Nova", color:"#6b7280", bg:"#f3f4f6" },
-  { key:"em_analise", label:"Em AnÃ¡lise", color:"#d97706", bg:"#fffbeb" },
+  { key:"em_analise", label:"Em Análise", color:"#d97706", bg:"#fffbeb" },
   { key:"em_andamento", label:"Em Andamento", color:"#2563eb", bg:"#eff6ff" },
   { key:"aguardando_solicitante", label:"Aguard. Solicitante", color:"#7c3aed", bg:"#f5f3ff" },
   { key:"aguardando_terceiro", label:"Aguard. Terceiro", color:"#c2410c", bg:"#fff7ed" },
@@ -142,35 +142,35 @@ const STATUSES = [
 ];
 const PRIORITIES = [
   { key:"baixa", label:"Baixa", color:"#16a34a" },
-  { key:"media", label:"MÃ©dia", color:"#ca8a04" },
+  { key:"media", label:"Média", color:"#ca8a04" },
   { key:"alta", label:"Alta", color:"#dc2626" },
-  { key:"critica", label:"CrÃ­tica", color:"#7c2d12" },
+  { key:"critica", label:"Crítica", color:"#7c2d12" },
 ];
 const ROLES = [
   { key:"admin", label:"Admin", desc:"Acesso total ao sistema", color:"#7c3aed", bg:"#f5f3ff" },
-  { key:"gestor", label:"Gestor", desc:"VÃª tudo, reatribui e gerencia", color:"#2563eb", bg:"#eff6ff" },
-  { key:"membro_equipe", label:"Membro de Equipe", desc:"Atende solicitaÃ§Ãµes da equipe", color:"#0891b2", bg:"#ecfeff" },
-  { key:"solicitante", label:"Solicitante", desc:"Abre e acompanha solicitaÃ§Ãµes", color:"#16a34a", bg:"#f0fdf4" },
+  { key:"gestor", label:"Gestor", desc:"Vê tudo, reatribui e gerencia", color:"#2563eb", bg:"#eff6ff" },
+  { key:"membro_equipe", label:"Membro de Equipe", desc:"Atende solicitações da equipe", color:"#0891b2", bg:"#ecfeff" },
+  { key:"solicitante", label:"Solicitante", desc:"Abre e acompanha solicitações", color:"#16a34a", bg:"#f0fdf4" },
 ];
 const INITIAL_REQUESTS = [
-  { id:"r1", protocol:"APEX-2025-01000", title:"Dashboard de faturamento mensal", description:"Precisamos de um dashboard consolidado com faturamento por emissora.", team_id:"t1", type_id:"rt1", status:"em_andamento", priority:"alta", requester_id:"u5", assignee_id:"u2", client_name:"Alpes MÃ­dia", created_at:"2025-05-10T09:00:00Z", updated_at:"2025-05-12T14:00:00Z", attachments:[{ id:"a1", file_name:"briefing.pdf", file_size:204800, uploader_id:"u5", created_at:"2025-05-10T09:05:00Z" }], comments:[{ id:"c1", author_id:"u2", content:"Iniciado levantamento das fontes de dados.", visibility:"publico", created_at:"2025-05-11T10:00:00Z" },{ id:"c2", author_id:"u1", content:"Prioridade elevada a pedido do diretor.", visibility:"interno", created_at:"2025-05-12T08:00:00Z" }], history:[{ id:"h1", actor_id:"u5", action:"created", old_value:null, new_value:"nova", created_at:"2025-05-10T09:00:00Z" },{ id:"h2", actor_id:"u2", action:"status_changed", old_value:"nova", new_value:"em_andamento", created_at:"2025-05-11T09:30:00Z" }] },
-  { id:"r2", protocol:"APEX-2025-01001", title:"Erro nos dados de leads de abril", description:"RelatÃ³rios mostram valores duplicados.", team_id:"t1", type_id:"rt2", status:"nova", priority:"critica", requester_id:"u5", assignee_id:null, client_name:"Comercial", created_at:"2025-05-13T11:00:00Z", updated_at:"2025-05-13T11:00:00Z", attachments:[], comments:[], history:[{ id:"h3", actor_id:"u5", action:"created", old_value:null, new_value:"nova", created_at:"2025-05-13T11:00:00Z" }] },
-  { id:"r3", protocol:"APEX-2025-01002", title:"Acesso ao sistema de automaÃ§Ã£o", description:"Solicito acesso ao N8N.", team_id:"t2", type_id:"rt4", status:"em_analise", priority:"media", requester_id:"u5", assignee_id:"u3", client_name:null, created_at:"2025-05-14T08:00:00Z", updated_at:"2025-05-14T15:00:00Z", attachments:[], comments:[{ id:"c3", author_id:"u3", content:"Verificando permissÃµes necessÃ¡rias.", visibility:"publico", created_at:"2025-05-14T15:00:00Z" }], history:[{ id:"h4", actor_id:"u5", action:"created", old_value:null, new_value:"nova", created_at:"2025-05-14T08:00:00Z" },{ id:"h5", actor_id:"u3", action:"status_changed", old_value:"nova", new_value:"em_analise", created_at:"2025-05-14T15:00:00Z" }] },
-  { id:"r4", protocol:"APEX-2025-01003", title:"Servidor de staging fora do ar", description:"InacessÃ­vel desde ontem.", team_id:"t3", type_id:"rt6", status:"em_andamento", priority:"critica", requester_id:"u2", assignee_id:"u4", client_name:null, created_at:"2025-05-15T07:00:00Z", updated_at:"2025-05-15T09:00:00Z", attachments:[], comments:[], history:[{ id:"h6", actor_id:"u2", action:"created", old_value:null, new_value:"nova", created_at:"2025-05-15T07:00:00Z" }] },
-  { id:"r5", protocol:"APEX-2025-01004", title:"AutomaÃ§Ã£o envio de relatÃ³rios", description:"Envio semanal para a diretoria.", team_id:"t3", type_id:"rt7", status:"finalizada", priority:"media", requester_id:"u5", assignee_id:"u4", client_name:"Diretoria", created_at:"2025-05-01T10:00:00Z", updated_at:"2025-05-12T16:00:00Z", attachments:[], comments:[{ id:"c4", author_id:"u4", content:"AutomaÃ§Ã£o criada e testada. Envios toda segunda Ã s 8h.", visibility:"publico", created_at:"2025-05-12T16:00:00Z" }], history:[{ id:"h7", actor_id:"u5", action:"created", old_value:null, new_value:"nova", created_at:"2025-05-01T10:00:00Z" },{ id:"h8", actor_id:"u4", action:"status_changed", old_value:"em_andamento", new_value:"finalizada", created_at:"2025-05-12T16:00:00Z" }] },
+  { id:"r1", protocol:"APEX-2025-01000", title:"Dashboard de faturamento mensal", description:"Precisamos de um dashboard consolidado com faturamento por emissora.", team_id:"t1", type_id:"rt1", status:"em_andamento", priority:"alta", requester_id:"u5", assignee_id:"u2", client_name:"Alpes Mídia", created_at:"2025-05-10T09:00:00Z", updated_at:"2025-05-12T14:00:00Z", attachments:[{ id:"a1", file_name:"briefing.pdf", file_size:204800, uploader_id:"u5", created_at:"2025-05-10T09:05:00Z" }], comments:[{ id:"c1", author_id:"u2", content:"Iniciado levantamento das fontes de dados.", visibility:"publico", created_at:"2025-05-11T10:00:00Z" },{ id:"c2", author_id:"u1", content:"Prioridade elevada a pedido do diretor.", visibility:"interno", created_at:"2025-05-12T08:00:00Z" }], history:[{ id:"h1", actor_id:"u5", action:"created", old_value:null, new_value:"nova", created_at:"2025-05-10T09:00:00Z" },{ id:"h2", actor_id:"u2", action:"status_changed", old_value:"nova", new_value:"em_andamento", created_at:"2025-05-11T09:30:00Z" }] },
+  { id:"r2", protocol:"APEX-2025-01001", title:"Erro nos dados de leads de abril", description:"Relatórios mostram valores duplicados.", team_id:"t1", type_id:"rt2", status:"nova", priority:"critica", requester_id:"u5", assignee_id:null, client_name:"Comercial", created_at:"2025-05-13T11:00:00Z", updated_at:"2025-05-13T11:00:00Z", attachments:[], comments:[], history:[{ id:"h3", actor_id:"u5", action:"created", old_value:null, new_value:"nova", created_at:"2025-05-13T11:00:00Z" }] },
+  { id:"r3", protocol:"APEX-2025-01002", title:"Acesso ao sistema de automação", description:"Solicito acesso ao N8N.", team_id:"t2", type_id:"rt4", status:"em_analise", priority:"media", requester_id:"u5", assignee_id:"u3", client_name:null, created_at:"2025-05-14T08:00:00Z", updated_at:"2025-05-14T15:00:00Z", attachments:[], comments:[{ id:"c3", author_id:"u3", content:"Verificando permissões necessárias.", visibility:"publico", created_at:"2025-05-14T15:00:00Z" }], history:[{ id:"h4", actor_id:"u5", action:"created", old_value:null, new_value:"nova", created_at:"2025-05-14T08:00:00Z" },{ id:"h5", actor_id:"u3", action:"status_changed", old_value:"nova", new_value:"em_analise", created_at:"2025-05-14T15:00:00Z" }] },
+  { id:"r4", protocol:"APEX-2025-01003", title:"Servidor de staging fora do ar", description:"Inacessível desde ontem.", team_id:"t3", type_id:"rt6", status:"em_andamento", priority:"critica", requester_id:"u2", assignee_id:"u4", client_name:null, created_at:"2025-05-15T07:00:00Z", updated_at:"2025-05-15T09:00:00Z", attachments:[], comments:[], history:[{ id:"h6", actor_id:"u2", action:"created", old_value:null, new_value:"nova", created_at:"2025-05-15T07:00:00Z" }] },
+  { id:"r5", protocol:"APEX-2025-01004", title:"Automação envio de relatórios", description:"Envio semanal para a diretoria.", team_id:"t3", type_id:"rt7", status:"finalizada", priority:"media", requester_id:"u5", assignee_id:"u4", client_name:"Diretoria", created_at:"2025-05-01T10:00:00Z", updated_at:"2025-05-12T16:00:00Z", attachments:[], comments:[{ id:"c4", author_id:"u4", content:"Automação criada e testada. Envios toda segunda às 8h.", visibility:"publico", created_at:"2025-05-12T16:00:00Z" }], history:[{ id:"h7", actor_id:"u5", action:"created", old_value:null, new_value:"nova", created_at:"2025-05-01T10:00:00Z" },{ id:"h8", actor_id:"u4", action:"status_changed", old_value:"em_andamento", new_value:"finalizada", created_at:"2025-05-12T16:00:00Z" }] },
 ];
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // HELPERS
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 const gs = k => STATUSES.find(s=>s.key===k)||STATUSES[0];
 const gp = k => PRIORITIES.find(p=>p.key===k)||PRIORITIES[1];
 const gt = id => TEAMS.find(t=>t.id===id);
 const gu = id => USERS.find(u=>u.id===id);
 const gtype = id => REQUEST_TYPES.find(t=>t.id===id);
 const grc = k => ROLES.find(r=>r.key===k)||ROLES[3];
-const fd = d => d?new Date(d).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit"}):"â€”";
-const fdt = d => d?new Date(d).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"â€”";
+const fd = d => d?new Date(d).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit"}):"—";
+const fdt = d => d?new Date(d).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
 const fsz = b => b>1048576?(b/1048576).toFixed(1)+" MB":Math.round(b/1024)+" KB";
 
 const inp = { width:"100%", padding:"10px 12px", borderRadius:8, border:"1px solid #e2e8f0", fontSize:14, outline:"none", background:"#fafafa", color:"#0f172a", WebkitAppearance:"none", fontFamily:"'DM Sans', sans-serif" };
@@ -181,9 +181,9 @@ const Field = ({ label, children }) => (
   </div>
 );
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // AVATAR com foto
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function Avatar({ user, size=32 }) {
   const colors = ["#6366f1","#0ea5e9","#10b981","#f59e0b","#ef4444","#8b5cf6","#ec4899"];
   const color = colors[(user?.full_name?.charCodeAt(0)||0)%colors.length];
@@ -216,9 +216,9 @@ const PriorityDot = ({ priority }) => {
   return <span style={{ display:"inline-block", width:7, height:7, borderRadius:"50%", background:p.color, marginRight:5, flexShrink:0 }} />;
 };
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // LOGIN SCREEN
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function LoginScreen({ onLogin, onGoogleLogin }) {
   const [tab, setTab] = useState("email");
   const [email, setEmail] = useState("");
@@ -266,9 +266,9 @@ function LoginScreen({ onLogin, onGoogleLogin }) {
             <ApexLogoMark size={64} />
           </div>
           <div style={{ color:"#fff", fontFamily:"'Outfit', sans-serif", fontWeight:600, fontSize:28, letterSpacing:"0.12em", marginBottom:4 }}>APEX</div>
-          <div style={{ color:"#4a7ab8", fontFamily:"'Outfit', sans-serif", fontWeight:300, fontSize:13, letterSpacing:"0.3em", textTransform:"uppercase", marginBottom:8 }}>SolicitaÃ§Ãµes</div>
+          <div style={{ color:"#4a7ab8", fontFamily:"'Outfit', sans-serif", fontWeight:300, fontSize:13, letterSpacing:"0.3em", textTransform:"uppercase", marginBottom:8 }}>Solicitações</div>
           <div style={{ width:40, height:1, background:"rgba(74,122,184,0.4)", margin:"0 auto 8px" }} />
-          <div style={{ color:"#334155", fontFamily:"'Outfit', sans-serif", fontWeight:300, fontSize:11, letterSpacing:"0.2em", textTransform:"uppercase" }}>Alpes MÃ­dia</div>
+          <div style={{ color:"#334155", fontFamily:"'Outfit', sans-serif", fontWeight:300, fontSize:11, letterSpacing:"0.2em", textTransform:"uppercase" }}>Alpes Mídia</div>
         </div>
 
         {/* Card */}
@@ -293,7 +293,7 @@ function LoginScreen({ onLogin, onGoogleLogin }) {
               <Field label="Senha">
                 <div style={{ position:"relative" }}>
                   <Icon name="lock" size={16} color="#475569" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }} />
-                  <input value={password} onChange={e=>setPassword(e.target.value)} placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" type={showPass?"text":"password"}
+                  <input value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" type={showPass?"text":"password"}
                     style={{ ...inp, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(59,110,168,0.25)", color:"#e2e8f0", paddingLeft:38, paddingRight:38 }}
                     onKeyDown={e=>e.key==="Enter"&&handleLogin()} />
                   <button onClick={()=>setShowPass(v=>!v)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", padding:0 }}>
@@ -314,7 +314,7 @@ function LoginScreen({ onLogin, onGoogleLogin }) {
 
           {tab==="google" && (
             <div style={{ textAlign:"center" }}>
-              <p style={{ fontSize:13, color:"#475569", marginBottom:20, lineHeight:1.6 }}>FaÃ§a login com sua conta Google corporativa da Alpes MÃ­dia.</p>
+              <p style={{ fontSize:13, color:"#475569", marginBottom:20, lineHeight:1.6 }}>Faça login com sua conta Google corporativa da Alpes Mídia.</p>
               <button onClick={handleGoogleLogin} disabled={loading} style={{ width:"100%", padding:"12px 16px", background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, cursor:loading?"not-allowed":"pointer", fontSize:14, color:"#e2e8f0", display:"flex", alignItems:"center", justifyContent:"center", gap:10, fontFamily:"'DM Sans',sans-serif", fontWeight:500 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                 {loading ? "Entrando..." : "Continuar com Google"}
@@ -326,22 +326,22 @@ function LoginScreen({ onLogin, onGoogleLogin }) {
 
         {/* Footer */}
         <div style={{ textAlign:"center", marginTop:32, color:"#1e293b", fontSize:11, fontFamily:"'Outfit',sans-serif", letterSpacing:"0.1em" }}>
-          APEX SOLICITAÃ‡Ã•ES Â· ALPES GRUPO Â· {new Date().getFullYear()}
+          APEX SOLICITAÇÕES · ALPES GRUPO · {new Date().getFullYear()}
         </div>
       </div>
     </div>
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // BOTTOM NAV (mobile)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function BottomNav({ currentUser, view, setView }) {
   const isSolicitante = currentUser.role==="solicitante";
   const isAdmin = ["admin","gestor"].includes(currentUser.role);
   const items = isSolicitante
     ? [{ key:"my-requests", icon:"ticket", label:"Minhas" }, { key:"new", icon:"plus", label:"Nova" }]
-    : [{ key:"dashboard", icon:"home", label:"InÃ­cio" }, { key:"requests", icon:"ticket", label:"Pedidos" }, { key:"historico", icon:"history", label:"HistÃ³rico" }, { key:"new", icon:"plus", label:"Nova" }, ...(isAdmin?[{ key:"admin-users", icon:"users", label:"Admin" }]:[]) ];
+    : [{ key:"dashboard", icon:"home", label:"Início" }, { key:"requests", icon:"ticket", label:"Pedidos" }, { key:"historico", icon:"history", label:"Histórico" }, { key:"new", icon:"plus", label:"Nova" }, ...(isAdmin?[{ key:"admin-users", icon:"users", label:"Admin" }]:[]) ];
   return (
     <div style={{ position:"fixed", bottom:0, left:0, right:0, background:"#fff", borderTop:"1px solid #e2e8f0", display:"flex", zIndex:200, paddingBottom:"env(safe-area-inset-bottom,0px)" }}>
       {items.map(item => (
@@ -356,9 +356,9 @@ function BottomNav({ currentUser, view, setView }) {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // SIDEBAR
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function Sidebar({ currentUser, view, setView, open, setOpen, bp }) {
   const [adminOpen, setAdminOpen] = useState(true);
   const isSolicitante = currentUser.role==="solicitante";
@@ -367,9 +367,9 @@ function Sidebar({ currentUser, view, setView, open, setOpen, bp }) {
   const w = collapsed?60:220;
 
   const navItems = isSolicitante
-    ? [{ key:"my-requests", label:"Minhas SolicitaÃ§Ãµes", icon:"ticket" }, { key:"new", label:"Nova SolicitaÃ§Ã£o", icon:"plus" }]
-    : [{ key:"dashboard", label:"Dashboard", icon:"home" }, { key:"requests", label:"SolicitaÃ§Ãµes", icon:"ticket" }, { key:"historico", label:"HistÃ³rico", icon:"history" }, { key:"new", label:"Nova SolicitaÃ§Ã£o", icon:"plus" }];
-  const adminItems = [{ key:"admin-users", label:"UsuÃ¡rios", icon:"users" }, { key:"admin-teams", label:"Equipes", icon:"layers" }, { key:"admin-types", label:"Tipos", icon:"tag" }];
+    ? [{ key:"my-requests", label:"Minhas Solicitações", icon:"ticket" }, { key:"new", label:"Nova Solicitação", icon:"plus" }]
+    : [{ key:"dashboard", label:"Dashboard", icon:"home" }, { key:"requests", label:"Solicitações", icon:"ticket" }, { key:"historico", label:"Histórico", icon:"history" }, { key:"new", label:"Nova Solicitação", icon:"plus" }];
+  const adminItems = [{ key:"admin-users", label:"Usuários", icon:"users" }, { key:"admin-teams", label:"Equipes", icon:"layers" }, { key:"admin-types", label:"Tipos", icon:"tag" }];
 
   const NavBtn = ({ item }) => (
     <button onClick={()=>{ setView(item.key); if(bp.isTablet) setOpen(false); }}
@@ -393,7 +393,7 @@ function Sidebar({ currentUser, view, setView, open, setOpen, bp }) {
           {!collapsed&&<div style={{ color:"#1e3a5f", fontSize:10, fontWeight:700, letterSpacing:1.2, padding:"6px 8px 4px", textTransform:"uppercase", fontFamily:"'Outfit',sans-serif" }}>Menu</div>}
           {navItems.map(item=><NavBtn key={item.key} item={item} />)}
 
-          {/* Admin section colapsÃ¡vel */}
+          {/* Admin section colapsável */}
           {isAdmin&&(
             <>
               {!collapsed ? (
@@ -408,11 +408,11 @@ function Sidebar({ currentUser, view, setView, open, setOpen, bp }) {
           )}
         </nav>
 
-        {/* Footer â€” apenas rodapÃ© do sistema, sem nome do usuÃ¡rio */}
+        {/* Footer — apenas rodapé do sistema, sem nome do usuário */}
         {!collapsed&&(
           <div style={{ padding:"12px 16px", borderTop:"1px solid rgba(255,255,255,0.05)" }}>
             <div style={{ fontSize:10, color:"#1e3a5f", fontFamily:"'Outfit',sans-serif", letterSpacing:"0.1em", textTransform:"uppercase", textAlign:"center" }}>
-              Apex SolicitaÃ§Ãµes Â· Alpes Grupo
+              Apex Solicitações · Alpes Grupo
             </div>
           </div>
         )}
@@ -421,17 +421,17 @@ function Sidebar({ currentUser, view, setView, open, setOpen, bp }) {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // TOPBAR
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function Topbar({ currentUser, view, setSidebarOpen, bp, onLogout }) {
-  const titles = { dashboard:"Dashboard", requests:"SolicitaÃ§Ãµes", historico:"HistÃ³rico", new:"Nova SolicitaÃ§Ã£o", detail:"SolicitaÃ§Ã£o", "my-requests":"Minhas SolicitaÃ§Ãµes", "admin-users":"UsuÃ¡rios", "admin-teams":"Equipes", "admin-types":"Tipos" };
+  const titles = { dashboard:"Dashboard", requests:"Solicitações", historico:"Histórico", new:"Nova Solicitação", detail:"Solicitação", "my-requests":"Minhas Solicitações", "admin-users":"Usuários", "admin-teams":"Equipes", "admin-types":"Tipos" };
   return (
     <div style={{ background:"#fff", borderBottom:"1px solid #e2e8f0", padding:"0 20px", height:56, display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
       {!bp.isMobile&&<button onClick={()=>setSidebarOpen(v=>!v)} style={{ background:"none", border:"none", cursor:"pointer", padding:6, borderRadius:6, color:"#64748b" }}><Icon name="menu" size={18} color="#64748b" /></button>}
       {bp.isMobile&&<div style={{ display:"flex", alignItems:"center", gap:8 }}><ApexLogoMark size={26} /><span style={{ fontFamily:"'Outfit',sans-serif", fontWeight:600, fontSize:13, letterSpacing:"0.06em", color:"#0f172a" }}>APEX</span></div>}
       <h1 style={{ fontSize:bp.isMobile?14:15, fontWeight:600, color:"#0f172a", flex:1, fontFamily:"'Outfit',sans-serif", letterSpacing:"0.02em" }}>{!bp.isMobile&&titles[view]}</h1>
-      {/* User info â€” apenas aqui, removido do sidebar */}
+      {/* User info — apenas aqui, removido do sidebar */}
       <div style={{ display:"flex", alignItems:"center", gap:10 }}>
         {!bp.isMobile&&(
           <div style={{ textAlign:"right" }}>
@@ -448,9 +448,9 @@ function Topbar({ currentUser, view, setSidebarOpen, bp, onLogout }) {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // REQUEST CARD
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function RequestCard({ r, onClick }) {
   const s=gs(r.status), p=gp(r.priority), t=gt(r.team_id), a=gu(r.assignee_id);
   const waiting = r.status==="aguardando_solicitante";
@@ -478,9 +478,9 @@ function RequestCard({ r, onClick }) {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // TIMELINE
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function Timeline({ request, currentRole }) {
   const events = [];
   request.history.forEach(h=>events.push({...h,_type:"history"}));
@@ -494,7 +494,7 @@ function Timeline({ request, currentRole }) {
   const txt = e => {
     const actor=gu(e.actor_id||e.author_id); const name=actor?.full_name||"Sistema";
     if(e._type==="comment") return {title:name+" comentou",body:e.content};
-    return {created:{title:"SolicitaÃ§Ã£o criada por "+name},status_changed:{title:name+" alterou o status",body:(gs(e.old_value)?.label||e.old_value||"â€”")+" â†’ "+(gs(e.new_value)?.label||e.new_value)},priority_changed:{title:name+" alterou a prioridade",body:(e.old_value||"â€”")+" â†’ "+(e.new_value||"â€”")},assignee_changed:{title:name+" alterou o responsÃ¡vel",body:(e.old_value||"NinguÃ©m")+" â†’ "+(e.new_value||"NinguÃ©m")}}[e.action]||{title:e.action};
+    return {created:{title:"Solicitação criada por "+name},status_changed:{title:name+" alterou o status",body:(gs(e.old_value)?.label||e.old_value||"—")+" → "+(gs(e.new_value)?.label||e.new_value)},priority_changed:{title:name+" alterou a prioridade",body:(e.old_value||"—")+" → "+(e.new_value||"—")},assignee_changed:{title:name+" alterou o responsável",body:(e.old_value||"Ninguém")+" → "+(e.new_value||"Ninguém")}}[e.action]||{title:e.action};
   };
 
   if(!events.length) return <div style={{ color:"#94a3b8", fontSize:13, textAlign:"center", padding:"28px 0", fontFamily:"'DM Sans',sans-serif" }}>Nenhuma atividade registrada.</div>;
@@ -522,14 +522,14 @@ function Timeline({ request, currentRole }) {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // STATUS STEPPER
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function StatusStepper({ status, bp }) {
-  const steps=[{key:"nova",label:"Recebida"},{key:"em_analise",label:"AnÃ¡lise"},{key:"em_andamento",label:"Andamento"},{key:"finalizada",label:"Finalizada"}];
+  const steps=[{key:"nova",label:"Recebida"},{key:"em_analise",label:"Análise"},{key:"em_andamento",label:"Andamento"},{key:"finalizada",label:"Finalizada"}];
   const cancelled=status==="cancelada"; const waiting=["aguardando_solicitante","aguardando_terceiro"].includes(status);
   const idx={nova:0,em_analise:1,em_andamento:2,aguardando_solicitante:2,aguardando_terceiro:2,finalizada:4}[status]??0;
-  if(cancelled) return <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:10, padding:"12px 16px", display:"flex", alignItems:"center", gap:10 }}><Icon name="x" size={16} color="#dc2626" /><span style={{ fontWeight:600, color:"#dc2626", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>SolicitaÃ§Ã£o cancelada</span></div>;
+  if(cancelled) return <div style={{ background:"#fef2f2", border:"1px solid #fecaca", borderRadius:10, padding:"12px 16px", display:"flex", alignItems:"center", gap:10 }}><Icon name="x" size={16} color="#dc2626" /><span style={{ fontWeight:600, color:"#dc2626", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>Solicitação cancelada</span></div>;
   return (
     <div style={{ background:"#f8fafc", borderRadius:10, padding:"16px", border:"1px solid #e2e8f0" }}>
       {waiting&&<div style={{ marginBottom:12, background:"#fff7ed", border:"1px solid #fed7aa", borderRadius:8, padding:"8px 12px", display:"flex", alignItems:"center", gap:8 }}><Icon name="clock" size={14} color="#c2410c" /><span style={{ fontSize:12, fontWeight:600, color:"#c2410c", fontFamily:"'DM Sans',sans-serif" }}>{status==="aguardando_solicitante"?"Aguardando sua resposta":"Aguardando terceiro"}</span></div>}
@@ -550,9 +550,9 @@ function StatusStepper({ status, bp }) {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // METRIC CARD
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function MetricCard({ label, value, color, sub, bp }) {
   return (
     <div style={{ background:"#fff", borderRadius:12, padding:bp?.isMobile?"12px 14px":"16px 18px", border:"1px solid #e2e8f0", textAlign:"center" }}>
@@ -563,9 +563,9 @@ function MetricCard({ label, value, color, sub, bp }) {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // MY REQUESTS (solicitante)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function MyRequestsView({ requests, currentUser, openRequest, setView, bp }) {
   const [tab, setTab] = useState("ativos");
   const [search, setSearch] = useState("");
@@ -593,23 +593,23 @@ function MyRequestsView({ requests, currentUser, openRequest, setView, bp }) {
         {tab==="finalizados"&&finalizados.length>0&&(
           <div style={{ padding:"10px 16px", background:"#f8fafc", borderBottom:"1px solid #f1f5f9", display:"flex", gap:20, flexWrap:"wrap" }}>
             <span style={{ fontSize:12, color:"#64748b", display:"flex", alignItems:"center", gap:5, fontFamily:"'DM Sans',sans-serif" }}><Icon name="checkCircle" size={13} color="#16a34a" /> <strong style={{ color:"#16a34a" }}>{finalizados.filter(x=>x.status==="finalizada").length}</strong> finalizadas</span>
-            {avgDays&&<span style={{ fontSize:12, color:"#64748b", display:"flex", alignItems:"center", gap:5, fontFamily:"'DM Sans',sans-serif" }}><Icon name="clock" size={13} color="#64748b" /> Tempo mÃ©dio: <strong style={{ color:"#374151" }}>{avgDays} dias</strong></span>}
+            {avgDays&&<span style={{ fontSize:12, color:"#64748b", display:"flex", alignItems:"center", gap:5, fontFamily:"'DM Sans',sans-serif" }}><Icon name="clock" size={13} color="#64748b" /> Tempo médio: <strong style={{ color:"#374151" }}>{avgDays} dias</strong></span>}
           </div>
         )}
         <div style={{ padding:"12px 14px", borderBottom:"1px solid #f1f5f9" }}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por tÃ­tulo ou protocolo..." style={{ ...inp, fontSize:13 }} />
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por título ou protocolo..." style={{ ...inp, fontSize:13 }} />
         </div>
         <div style={{ padding:"14px", display:"flex", flexDirection:"column", gap:10 }}>
-          {listed.length===0?<div style={{ textAlign:"center", padding:"32px 20px", color:"#94a3b8", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>Nenhuma solicitaÃ§Ã£o encontrada.</div>:listed.map(r=><RequestCard key={r.id} r={r} onClick={()=>openRequest(r.id)} />)}
+          {listed.length===0?<div style={{ textAlign:"center", padding:"32px 20px", color:"#94a3b8", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>Nenhuma solicitação encontrada.</div>:listed.map(r=><RequestCard key={r.id} r={r} onClick={()=>openRequest(r.id)} />)}
         </div>
       </div>
     </div>
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // DETAIL VIEW
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function DetailView({ request, currentUser, updateRequest, setView, showToast, setRequests, bp, detailFrom, api }) {
   const [tab, setTab] = useState("timeline");
   const [nc, setNc] = useState({ content:"", visibility:"publico" });
@@ -620,7 +620,7 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
   const teamMembers = USERS.filter(u=>u.team_id===request.team_id&&u.role==="membro_equipe");
   const backView = isSolicitante?"my-requests":(detailFrom||"requests");
 
-  const openWA = () => { if(!assignee?.whatsapp){showToast("ResponsÃ¡vel sem WhatsApp cadastrado.","error");return;} const msg=encodeURIComponent(`OlÃ¡ ${assignee.full_name.split(" ")[0]}! AtualizaÃ§Ã£o sobre a solicitaÃ§Ã£o *${request.protocol}* â€” *${request.title}*?`); window.open(`https://wa.me/${assignee.whatsapp}?text=${msg}`,"_blank"); };
+  const openWA = () => { if(!assignee?.whatsapp){showToast("Responsável sem WhatsApp cadastrado.","error");return;} const msg=encodeURIComponent(`Olá ${assignee.full_name.split(" ")[0]}! Atualização sobre a solicitação *${request.protocol}* — *${request.title}*?`); window.open(`https://wa.me/${assignee.whatsapp}?text=${msg}`,"_blank"); };
   const addComment = async () => {
     if (!nc.content.trim()) return;
     try {
@@ -656,14 +656,14 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
       showToast("Erro ao anexar arquivo.", "error");
     }
     e.target.value = "";
-  };  const tabs = isSolicitante?[["timeline","Acompanhamento"],["attachments","Anexos"]]:[["timeline","Timeline"],["comments","ComentÃ¡rios"],["attachments","Anexos"]];
+  };  const tabs = isSolicitante?[["timeline","Acompanhamento"],["attachments","Anexos"]]:[["timeline","Timeline"],["comments","Comentários"],["attachments","Anexos"]];
 
   return (
     <div style={{ paddingBottom:bp.isMobile?80:0 }}>
       <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:bp.isMobile?"14px 16px":"20px 24px", marginBottom:14 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
           <button onClick={()=>setView(backView)} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:8, padding:"7px 12px", cursor:"pointer", fontSize:13, color:"#64748b", display:"flex", alignItems:"center", gap:6, fontFamily:"'DM Sans',sans-serif" }}><Icon name="chevronRight" size={14} color="#64748b" style={{ transform:"rotate(180deg)" }} /> Voltar</button>
-          {assignee?.whatsapp&&<button onClick={openWA} style={{ marginLeft:"auto", padding:"8px 14px", background:"#16a34a", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:12, fontWeight:600, display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}><Icon name="phone" size={14} color="#fff" /> {bp.isMobile?"WhatsApp":"Falar com responsÃ¡vel"}</button>}
+          {assignee?.whatsapp&&<button onClick={openWA} style={{ marginLeft:"auto", padding:"8px 14px", background:"#16a34a", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:12, fontWeight:600, display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}><Icon name="phone" size={14} color="#fff" /> {bp.isMobile?"WhatsApp":"Falar com responsável"}</button>}
         </div>
         <div style={{ fontSize:11, color:"#94a3b8", fontFamily:"monospace", marginBottom:4 }}>{request.protocol}</div>
         <h2 style={{ fontSize:bp.isMobile?16:18, fontWeight:600, color:"#0f172a", marginBottom:10, lineHeight:1.3, fontFamily:"'Outfit',sans-serif" }}>{request.title}</h2>
@@ -677,7 +677,7 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
       {isSolicitante&&<div style={{ marginBottom:14 }}><StatusStepper status={request.status} bp={bp} /></div>}
       <div style={{ display:"grid", gridTemplateColumns:bp.isDesktop?"1fr 270px":"1fr", gap:14 }}>
         <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-          {request.description&&<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:bp.isMobile?"14px 16px":"18px 22px" }}><div style={{ fontWeight:600, fontSize:13, marginBottom:8, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>DescriÃ§Ã£o</div><p style={{ fontSize:13, color:"#475569", lineHeight:1.7, fontFamily:"'DM Sans',sans-serif" }}>{request.description}</p></div>}
+          {request.description&&<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:bp.isMobile?"14px 16px":"18px 22px" }}><div style={{ fontWeight:600, fontSize:13, marginBottom:8, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>Descrição</div><p style={{ fontSize:13, color:"#475569", lineHeight:1.7, fontFamily:"'DM Sans',sans-serif" }}>{request.description}</p></div>}
           <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"hidden" }}>
             <div style={{ display:"flex", borderBottom:"1px solid #f1f5f9", overflowX:"auto" }}>
               {tabs.map(([k,l])=><button key={k} onClick={()=>setTab(k)} style={{ padding:bp.isMobile?"12px 16px":"12px 20px", border:"none", background:"transparent", cursor:"pointer", fontSize:13, fontWeight:tab===k?600:400, color:tab===k?"#1e3d6e":"#64748b", borderBottom:tab===k?"2px solid #1e3d6e":"2px solid transparent", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{l}</button>)}
@@ -686,9 +686,9 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
               {tab==="timeline"&&<div>
                 <Timeline request={request} currentRole={currentUser.role} />
                 <div style={{ borderTop:"1px solid #f1f5f9", paddingTop:16, marginTop:12 }}>
-                  <textarea value={nc.content} onChange={e=>setNc(c=>({...c,content:e.target.value}))} placeholder={isSolicitante?"Responda ou adicione informaÃ§Ãµes...":"Escreva um comentÃ¡rio..."} rows={3} style={{ ...inp, resize:"vertical", marginBottom:10 }} />
+                  <textarea value={nc.content} onChange={e=>setNc(c=>({...c,content:e.target.value}))} placeholder={isSolicitante?"Responda ou adicione informações...":"Escreva um comentário..."} rows={3} style={{ ...inp, resize:"vertical", marginBottom:10 }} />
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                    {canEdit&&<select value={nc.visibility} onChange={e=>setNc(c=>({...c,visibility:e.target.value}))} style={{ ...inp, width:"auto" }}><option value="publico">PÃºblico</option><option value="interno">Interno</option></select>}
+                    {canEdit&&<select value={nc.visibility} onChange={e=>setNc(c=>({...c,visibility:e.target.value}))} style={{ ...inp, width:"auto" }}><option value="publico">Público</option><option value="interno">Interno</option></select>}
                     <div style={{ flex:1 }} />
                     <button onClick={addComment} style={{ padding:"9px 20px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", gap:6, fontFamily:"'DM Sans',sans-serif" }}><Icon name="send" size={14} color="#fff" /> Enviar</button>
                   </div>
@@ -697,19 +697,19 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
               {tab==="comments"&&!isSolicitante&&<div>
                 <div style={{ display:"flex", flexDirection:"column", gap:12, marginBottom:18 }}>
                   {request.comments.map(c=>{ const author=gu(c.author_id); return (<div key={c.id} style={{ display:"flex", gap:10 }}><Avatar user={author} size={30} /><div style={{ flex:1 }}><div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap" }}><span style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{author?.full_name}</span>{c.visibility==="interno"&&<span style={{ fontSize:11, background:"#fef3c7", color:"#92400e", padding:"1px 6px", borderRadius:4, fontWeight:600 }}>Interno</span>}<span style={{ fontSize:11, color:"#94a3b8" }}>{fdt(c.created_at)}</span></div><div style={{ fontSize:13, color:"#374151", background:"#f8fafc", borderRadius:8, padding:"10px 12px", lineHeight:1.6, fontFamily:"'DM Sans',sans-serif" }}>{c.content}</div></div></div>); })}
-                  {!request.comments.length&&<div style={{ color:"#94a3b8", fontSize:13, textAlign:"center", padding:"20px 0", fontFamily:"'DM Sans',sans-serif" }}>Nenhum comentÃ¡rio ainda.</div>}
+                  {!request.comments.length&&<div style={{ color:"#94a3b8", fontSize:13, textAlign:"center", padding:"20px 0", fontFamily:"'DM Sans',sans-serif" }}>Nenhum comentário ainda.</div>}
                 </div>
                 <div style={{ borderTop:"1px solid #f1f5f9", paddingTop:16 }}>
-                  <textarea value={nc.content} onChange={e=>setNc(c=>({...c,content:e.target.value}))} rows={3} style={{ ...inp, resize:"vertical", marginBottom:10 }} placeholder="Escreva um comentÃ¡rio..." />
+                  <textarea value={nc.content} onChange={e=>setNc(c=>({...c,content:e.target.value}))} rows={3} style={{ ...inp, resize:"vertical", marginBottom:10 }} placeholder="Escreva um comentário..." />
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                    <select value={nc.visibility} onChange={e=>setNc(c=>({...c,visibility:e.target.value}))} style={{ ...inp, width:"auto" }}><option value="publico">PÃºblico</option><option value="interno">Interno</option></select>
+                    <select value={nc.visibility} onChange={e=>setNc(c=>({...c,visibility:e.target.value}))} style={{ ...inp, width:"auto" }}><option value="publico">Público</option><option value="interno">Interno</option></select>
                     <div style={{ flex:1 }} /><button onClick={addComment} style={{ padding:"9px 20px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>Enviar</button>
                   </div>
                 </div>
               </div>}
               {tab==="attachments"&&<div>
                 <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:14 }}>
-                  {(request.attachments||[]).map(a=>{ const ext=a.file_name.split(".").pop().toUpperCase(); const ec={PDF:"#ef4444",PNG:"#10b981",JPG:"#0ea5e9",XLSX:"#16a34a",CSV:"#16a34a",DOCX:"#2563eb"}[ext]||"#6366f1"; return (<div key={a.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"#f8fafc", borderRadius:10, border:"1px solid #e2e8f0" }}><div style={{ width:34, height:34, borderRadius:8, background:ec+"15", border:`1px solid ${ec}30`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ fontSize:10, fontWeight:700, color:ec, fontFamily:"monospace" }}>{ext}</span></div><div style={{ flex:1, overflow:"hidden" }}><div style={{ fontWeight:600, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{a.file_name}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{fsz(a.file_size)} Â· {fd(a.created_at)}</div></div><button style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:6, padding:"5px 10px", cursor:"pointer", display:"flex", alignItems:"center", gap:4, fontSize:12, color:"#64748b" }}><Icon name="download" size={13} color="#64748b" /></button></div>); })}
+                  {(request.attachments||[]).map(a=>{ const ext=a.file_name.split(".").pop().toUpperCase(); const ec={PDF:"#ef4444",PNG:"#10b981",JPG:"#0ea5e9",XLSX:"#16a34a",CSV:"#16a34a",DOCX:"#2563eb"}[ext]||"#6366f1"; return (<div key={a.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"#f8fafc", borderRadius:10, border:"1px solid #e2e8f0" }}><div style={{ width:34, height:34, borderRadius:8, background:ec+"15", border:`1px solid ${ec}30`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ fontSize:10, fontWeight:700, color:ec, fontFamily:"monospace" }}>{ext}</span></div><div style={{ flex:1, overflow:"hidden" }}><div style={{ fontWeight:600, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{a.file_name}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{fsz(a.file_size)} · {fd(a.created_at)}</div></div><button style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:6, padding:"5px 10px", cursor:"pointer", display:"flex", alignItems:"center", gap:4, fontSize:12, color:"#64748b" }}><Icon name="download" size={13} color="#64748b" /></button></div>); })}
                   {!(request.attachments||[]).length&&<div style={{ textAlign:"center", color:"#94a3b8", fontSize:13, padding:"20px 0", fontFamily:"'DM Sans',sans-serif" }}>Nenhum arquivo anexado.</div>}
                 </div>
                 <input type="file" ref={fileRef} style={{ display:"none" }} onChange={addFile} />
@@ -723,25 +723,25 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
           <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"16px 18px" }}>
             <div style={{ fontWeight:600, fontSize:13, marginBottom:14, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>Detalhes</div>
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-              {[{ label:"Solicitante", content:<div style={{ display:"flex", alignItems:"center", gap:8 }}><Avatar user={gu(request.requester_id)} size={22} /><span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{gu(request.requester_id)?.full_name}</span></div> },{ label:"ResponsÃ¡vel", content:assignee?<div style={{ display:"flex", alignItems:"center", gap:8 }}><Avatar user={assignee} size={22} /><span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{assignee.full_name}</span></div>:<span style={{ color:"#94a3b8", fontSize:13 }}>NÃ£o atribuÃ­do</span> },...(request.client_name?[{ label:"Cliente / Ãrea", content:<span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{request.client_name}</span> }]:[]),{ label:"Ãšltima atualizaÃ§Ã£o", content:<span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{fdt(request.updated_at)}</span> },{ label:"Aberto em", content:<span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{fd(request.created_at)}</span> }].map(row=>(
+              {[{ label:"Solicitante", content:<div style={{ display:"flex", alignItems:"center", gap:8 }}><Avatar user={gu(request.requester_id)} size={22} /><span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{gu(request.requester_id)?.full_name}</span></div> },{ label:"Responsável", content:assignee?<div style={{ display:"flex", alignItems:"center", gap:8 }}><Avatar user={assignee} size={22} /><span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{assignee.full_name}</span></div>:<span style={{ color:"#94a3b8", fontSize:13 }}>Não atribuído</span> },...(request.client_name?[{ label:"Cliente / Área", content:<span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{request.client_name}</span> }]:[]),{ label:"Última atualização", content:<span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{fdt(request.updated_at)}</span> },{ label:"Aberto em", content:<span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{fd(request.created_at)}</span> }].map(row=>(
                 <div key={row.label}><div style={{ fontSize:11, fontWeight:600, color:"#94a3b8", textTransform:"uppercase", letterSpacing:0.5, marginBottom:4, fontFamily:"'Outfit',sans-serif" }}>{row.label}</div>{row.content}</div>
               ))}
             </div>
           </div>
-          {isSolicitante&&assignee&&<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"16px 18px" }}><div style={{ fontWeight:600, fontSize:13, marginBottom:12, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>ResponsÃ¡vel</div><div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}><Avatar user={assignee} size={34} /><div><div style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{assignee.full_name}</div><div style={{ fontSize:11, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>{team?.name}</div></div></div>{assignee.whatsapp&&<button onClick={openWA} style={{ width:"100%", padding:"10px", background:"#16a34a", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", justifyContent:"center", gap:8, fontFamily:"'DM Sans',sans-serif" }}><Icon name="phone" size={15} color="#fff" /> Enviar mensagem</button>}</div>}
-          {canEdit&&<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"16px 18px" }}><div style={{ fontWeight:600, fontSize:13, marginBottom:14, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>AÃ§Ãµes</div><div style={{ display:"flex", flexDirection:"column", gap:10 }}><Field label="Status"><select value={request.status} onChange={e=>updateRequest(request.id,{status:e.target.value})} style={inp}>{STATUSES.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select></Field><Field label="Prioridade"><select value={request.priority} onChange={e=>updateRequest(request.id,{priority:e.target.value})} style={inp}>{PRIORITIES.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select></Field><Field label="ResponsÃ¡vel"><select value={request.assignee_id||""} onChange={e=>updateRequest(request.id,{assignee_id:e.target.value||null})} style={inp}><option value="">Sem responsÃ¡vel</option>{teamMembers.map(u=><option key={u.id} value={u.id}>{u.full_name}</option>)}</select></Field></div></div>}
+          {isSolicitante&&assignee&&<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"16px 18px" }}><div style={{ fontWeight:600, fontSize:13, marginBottom:12, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>Responsável</div><div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}><Avatar user={assignee} size={34} /><div><div style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{assignee.full_name}</div><div style={{ fontSize:11, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>{team?.name}</div></div></div>{assignee.whatsapp&&<button onClick={openWA} style={{ width:"100%", padding:"10px", background:"#16a34a", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", justifyContent:"center", gap:8, fontFamily:"'DM Sans',sans-serif" }}><Icon name="phone" size={15} color="#fff" /> Enviar mensagem</button>}</div>}
+          {canEdit&&<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"16px 18px" }}><div style={{ fontWeight:600, fontSize:13, marginBottom:14, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>Ações</div><div style={{ display:"flex", flexDirection:"column", gap:10 }}><Field label="Status"><select value={request.status} onChange={e=>updateRequest(request.id,{status:e.target.value})} style={inp}>{STATUSES.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select></Field><Field label="Prioridade"><select value={request.priority} onChange={e=>updateRequest(request.id,{priority:e.target.value})} style={inp}>{PRIORITIES.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select></Field><Field label="Responsável"><select value={request.assignee_id||""} onChange={e=>updateRequest(request.id,{assignee_id:e.target.value||null})} style={inp}><option value="">Sem responsável</option>{teamMembers.map(u=><option key={u.id} value={u.id}>{u.full_name}</option>)}</select></Field></div></div>}
         </div>
       </div>
     </div>
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // DASHBOARD
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function Dashboard({ requests, currentUser, openRequest, bp }) {
   const vis = ["admin","gestor"].includes(currentUser.role)?requests:requests.filter(r=>r.team_id===currentUser.team_id||r.assignee_id===currentUser.id);
-  const stats=[{label:"Total",v:vis.length,color:"#1e3d6e"},{label:"Novas",v:vis.filter(r=>r.status==="nova").length,color:"#d97706"},{label:"Andamento",v:vis.filter(r=>r.status==="em_andamento").length,color:"#2563eb"},{label:"CrÃ­ticas",v:vis.filter(r=>r.priority==="critica"&&!["finalizada","cancelada"].includes(r.status)).length,color:"#dc2626"},{label:"Finalizadas",v:vis.filter(r=>r.status==="finalizada").length,color:"#16a34a"}];
+  const stats=[{label:"Total",v:vis.length,color:"#1e3d6e"},{label:"Novas",v:vis.filter(r=>r.status==="nova").length,color:"#d97706"},{label:"Andamento",v:vis.filter(r=>r.status==="em_andamento").length,color:"#2563eb"},{label:"Críticas",v:vis.filter(r=>r.priority==="critica"&&!["finalizada","cancelada"].includes(r.status)).length,color:"#dc2626"},{label:"Finalizadas",v:vis.filter(r=>r.status==="finalizada").length,color:"#16a34a"}];
   const recent=[...vis].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,5);
   const criticals=vis.filter(r=>r.priority==="critica"&&!["finalizada","cancelada"].includes(r.status));
   return (
@@ -752,23 +752,23 @@ function Dashboard({ requests, currentUser, openRequest, bp }) {
       <div style={{ display:"grid", gridTemplateColumns:bp.isDesktop?"1fr 1fr":"1fr", gap:16 }}>
         <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"hidden" }}>
           <div style={{ padding:"14px 18px", borderBottom:"1px solid #f1f5f9", fontWeight:600, fontSize:14, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Atividade Recente</div>
-          {recent.map(r=>{ const s=gs(r.status),t=gt(r.team_id); return (<div key={r.id} onClick={()=>openRequest(r.id)} style={{ padding:"12px 18px", borderBottom:"1px solid #f8fafc", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{ width:3, height:32, borderRadius:2, background:t?.color||"#e2e8f0", flexShrink:0 }} /><div style={{ flex:1, overflow:"hidden" }}><div style={{ fontWeight:600, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{r.protocol} Â· {fd(r.updated_at)}</div></div><Badge label={s.label} color={s.color} bg={s.bg} small /></div>); })}
+          {recent.map(r=>{ const s=gs(r.status),t=gt(r.team_id); return (<div key={r.id} onClick={()=>openRequest(r.id)} style={{ padding:"12px 18px", borderBottom:"1px solid #f8fafc", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{ width:3, height:32, borderRadius:2, background:t?.color||"#e2e8f0", flexShrink:0 }} /><div style={{ flex:1, overflow:"hidden" }}><div style={{ fontWeight:600, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{r.protocol} · {fd(r.updated_at)}</div></div><Badge label={s.label} color={s.color} bg={s.bg} small /></div>); })}
           {!recent.length&&<div style={{ padding:24, textAlign:"center", color:"#94a3b8", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>Nenhuma atividade.</div>}
         </div>
         <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"hidden" }}>
-          <div style={{ padding:"14px 18px", borderBottom:"1px solid #f1f5f9", fontWeight:600, fontSize:14, fontFamily:"'Outfit',sans-serif", color:"#dc2626", display:"flex", alignItems:"center", gap:8 }}><Icon name="alertCircle" size={16} color="#dc2626" /> CrÃ­ticas Abertas</div>
-          {criticals.map(r=>{ const a=gu(r.assignee_id); return (<div key={r.id} onClick={()=>openRequest(r.id)} style={{ padding:"12px 18px", borderBottom:"1px solid #f8fafc", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{ flex:1 }}><div style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{a?"Resp: "+a.full_name:"Sem responsÃ¡vel"}</div></div><Badge label={gs(r.status).label} color={gs(r.status).color} bg={gs(r.status).bg} small /></div>); })}
-          {!criticals.length&&<div style={{ padding:24, textAlign:"center", color:"#94a3b8", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>Nenhuma crÃ­tica aberta.</div>}
+          <div style={{ padding:"14px 18px", borderBottom:"1px solid #f1f5f9", fontWeight:600, fontSize:14, fontFamily:"'Outfit',sans-serif", color:"#dc2626", display:"flex", alignItems:"center", gap:8 }}><Icon name="alertCircle" size={16} color="#dc2626" /> Críticas Abertas</div>
+          {criticals.map(r=>{ const a=gu(r.assignee_id); return (<div key={r.id} onClick={()=>openRequest(r.id)} style={{ padding:"12px 18px", borderBottom:"1px solid #f8fafc", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{ flex:1 }}><div style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{a?"Resp: "+a.full_name:"Sem responsável"}</div></div><Badge label={gs(r.status).label} color={gs(r.status).color} bg={gs(r.status).bg} small /></div>); })}
+          {!criticals.length&&<div style={{ padding:24, textAlign:"center", color:"#94a3b8", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>Nenhuma crítica aberta.</div>}
         </div>
       </div>
     </div>
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // KANBAN + REQUESTS VIEW
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const QUICK_FILTERS=[{key:"todos",label:"Todos",filter:()=>true},{key:"meus",label:"Meus",filter:(r,uid)=>r.assignee_id===uid},{key:"sem_resp",label:"Sem responsÃ¡vel",filter:r=>!r.assignee_id},{key:"criticos",label:"CrÃ­ticos",filter:r=>r.priority==="critica"},{key:"aguardando",label:"Aguardando",filter:r=>["aguardando_solicitante","aguardando_terceiro"].includes(r.status)}];
+// ─────────────────────────────────────────────
+const QUICK_FILTERS=[{key:"todos",label:"Todos",filter:()=>true},{key:"meus",label:"Meus",filter:(r,uid)=>r.assignee_id===uid},{key:"sem_resp",label:"Sem responsável",filter:r=>!r.assignee_id},{key:"criticos",label:"Críticos",filter:r=>r.priority==="critica"},{key:"aguardando",label:"Aguardando",filter:r=>["aguardando_solicitante","aguardando_terceiro"].includes(r.status)}];
 function getMonthRange(){const now=new Date();return{from:new Date(now.getFullYear(),now.getMonth(),1).toISOString().split("T")[0],to:new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().split("T")[0]};}
 
 function RequestsView({ requests, currentUser, openRequest, setView, bp }) {
@@ -776,37 +776,37 @@ function RequestsView({ requests, currentUser, openRequest, setView, bp }) {
   const base=useMemo(()=>{let r=requests; if(currentUser.role==="membro_equipe") r=r.filter(x=>x.team_id===currentUser.team_id||x.assignee_id===currentUser.id); if(dateFrom) r=r.filter(x=>x.created_at>=dateFrom); if(dateTo) r=r.filter(x=>x.created_at<=dateTo+"T23:59:59"); if(teamF) r=r.filter(x=>x.team_id===teamF); if(priorityF) r=r.filter(x=>x.priority===priorityF); if(search) r=r.filter(x=>x.title.toLowerCase().includes(search.toLowerCase())||x.protocol.includes(search)); const qf=QUICK_FILTERS.find(f=>f.key===quick); if(qf) r=r.filter(x=>qf.filter(x,currentUser.id)); return r;},[requests,currentUser,dateFrom,dateTo,teamF,priorityF,search,quick]);
   const kanbanCols=useMemo(()=>{const a=STATUSES.filter(s=>!["finalizada","cancelada"].includes(s.key));const c=STATUSES.filter(s=>["finalizada","cancelada"].includes(s.key));return showFin?[...a,...c]:a;},[showFin]);
   const setMonth=offset=>{const now=new Date();const d=new Date(now.getFullYear(),now.getMonth()+offset,1);setDateFrom(new Date(d.getFullYear(),d.getMonth(),1).toISOString().split("T")[0]);setDateTo(new Date(d.getFullYear(),d.getMonth()+1,0).toISOString().split("T")[0]);};
-  const monthLabel=useMemo(()=>{if(!dateFrom) return "PerÃ­odo livre";return new Date(dateFrom+"T12:00:00").toLocaleDateString("pt-BR",{month:"long",year:"numeric"});},[dateFrom]);
+  const monthLabel=useMemo(()=>{if(!dateFrom) return "Período livre";return new Date(dateFrom+"T12:00:00").toLocaleDateString("pt-BR",{month:"long",year:"numeric"});},[dateFrom]);
   const isCurMonth=useMemo(()=>{const mr=getMonthRange();return dateFrom===mr.from&&dateTo===mr.to;},[dateFrom,dateTo]);
 
   return (
     <div style={{ paddingBottom:bp.isMobile?80:0 }}>
       <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"12px 14px", marginBottom:14 }}>
         <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
-          <input placeholder="Buscar por tÃ­tulo ou protocolo..." value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inp, flex:"1 1 180px" }} />
+          <input placeholder="Buscar por título ou protocolo..." value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inp, flex:"1 1 180px" }} />
           {bp.isMobile&&<button onClick={()=>setShowFilters(v=>!v)} style={{ padding:"10px 12px", border:"1px solid #e2e8f0", borderRadius:8, background:showFilters?"#eff6ff":"#fff", cursor:"pointer" }}><Icon name="filter" size={15} color={showFilters?"#2563eb":"#64748b"} /></button>}
           {!bp.isMobile&&<><select value={teamF} onChange={e=>setTeamF(e.target.value)} style={{ ...inp, width:"auto" }}><option value="">Todas equipes</option>{TEAMS.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select><select value={priorityF} onChange={e=>setPriorityF(e.target.value)} style={{ ...inp, width:"auto" }}><option value="">Todas prioridades</option>{PRIORITIES.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select><div style={{ display:"flex", border:"1px solid #e2e8f0", borderRadius:8, overflow:"hidden" }}>{(bp.isTablet?[["list","Lista"],["table","Tabela"]]:[["kanban","Kanban"],["list","Lista"],["table","Tabela"]]).map(([k,l])=><button key={k} onClick={()=>setMode(k)} style={{ padding:"9px 13px", border:"none", background:mode===k?"#1e3d6e":"#fff", color:mode===k?"#fff":"#64748b", cursor:"pointer", fontSize:12, fontWeight:500, fontFamily:"'DM Sans',sans-serif" }}>{l}</button>)}</div><button onClick={()=>setView("new")} style={{ padding:"9px 16px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>+ Nova</button></>}
         </div>
         {bp.isMobile&&showFilters&&<div style={{ marginTop:10, display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}><select value={teamF} onChange={e=>setTeamF(e.target.value)} style={{ ...inp, fontSize:13 }}><option value="">Todas equipes</option>{TEAMS.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select><select value={priorityF} onChange={e=>setPriorityF(e.target.value)} style={{ ...inp, fontSize:13 }}><option value="">Todas prioridades</option>{PRIORITIES.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select></div>}
-        {/* PerÃ­odo */}
+        {/* Período */}
         <div style={{ marginTop:10, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", borderTop:"1px solid #f1f5f9", paddingTop:10 }}>
           <Icon name="calendar" size={14} color="#64748b" />
-          <button onClick={()=>setMonth(-1)} style={{ padding:"4px 10px", border:"1px solid #e2e8f0", borderRadius:6, background:"#fff", cursor:"pointer", fontSize:12, color:"#64748b" }}>â€¹</button>
+          <button onClick={()=>setMonth(-1)} style={{ padding:"4px 10px", border:"1px solid #e2e8f0", borderRadius:6, background:"#fff", cursor:"pointer", fontSize:12, color:"#64748b" }}>‹</button>
           <span style={{ fontSize:13, fontWeight:600, color:"#374151", minWidth:120, textAlign:"center", textTransform:"capitalize", fontFamily:"'DM Sans',sans-serif" }}>{monthLabel}</span>
-          <button onClick={()=>setMonth(1)} style={{ padding:"4px 10px", border:"1px solid #e2e8f0", borderRadius:6, background:"#fff", cursor:"pointer", fontSize:12, color:"#64748b" }}>â€º</button>
-          {!isCurMonth&&<button onClick={()=>{const mr=getMonthRange();setDateFrom(mr.from);setDateTo(mr.to);}} style={{ padding:"4px 10px", border:"1px solid #1e3d6e", borderRadius:6, background:"#eff6ff", cursor:"pointer", fontSize:12, color:"#1e3d6e", fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>MÃªs atual</button>}
+          <button onClick={()=>setMonth(1)} style={{ padding:"4px 10px", border:"1px solid #e2e8f0", borderRadius:6, background:"#fff", cursor:"pointer", fontSize:12, color:"#64748b" }}>›</button>
+          {!isCurMonth&&<button onClick={()=>{const mr=getMonthRange();setDateFrom(mr.from);setDateTo(mr.to);}} style={{ padding:"4px 10px", border:"1px solid #1e3d6e", borderRadius:6, background:"#eff6ff", cursor:"pointer", fontSize:12, color:"#1e3d6e", fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>Mês atual</button>}
           <button onClick={()=>{setDateFrom("");setDateTo("");}} style={{ padding:"4px 10px", border:"1px solid #e2e8f0", borderRadius:6, background:"#fff", cursor:"pointer", fontSize:12, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Ver tudo</button>
-          {!bp.isMobile&&<><input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{ ...inp, width:"auto", fontSize:12 }} /><span style={{ fontSize:12, color:"#94a3b8" }}>atÃ©</span><input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{ ...inp, width:"auto", fontSize:12 }} /></>}
+          {!bp.isMobile&&<><input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{ ...inp, width:"auto", fontSize:12 }} /><span style={{ fontSize:12, color:"#94a3b8" }}>até</span><input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{ ...inp, width:"auto", fontSize:12 }} /></>}
           <span style={{ fontSize:12, color:"#94a3b8", marginLeft:"auto", fontFamily:"'DM Sans',sans-serif" }}>{base.length} chamado{base.length!==1?"s":""}</span>
         </div>
-        {/* Filtros rÃ¡pidos */}
+        {/* Filtros rápidos */}
         <div style={{ marginTop:10, display:"flex", gap:6, flexWrap:"wrap", borderTop:"1px solid #f1f5f9", paddingTop:10 }}>
           {QUICK_FILTERS.map(f=><button key={f.key} onClick={()=>setQuick(q=>q===f.key?"todos":f.key)} style={{ padding:"5px 12px", borderRadius:20, border:`1.5px solid ${quick===f.key?"#1e3d6e":"#e2e8f0"}`, background:quick===f.key?"#eff6ff":"#fff", color:quick===f.key?"#1e3d6e":"#64748b", cursor:"pointer", fontSize:12, fontWeight:quick===f.key?600:400, fontFamily:"'DM Sans',sans-serif" }}>{f.label} <span style={{ marginLeft:4, background:quick===f.key?"#1e3d6e":"#f1f5f9", color:quick===f.key?"#fff":"#64748b", borderRadius:10, padding:"1px 6px", fontSize:11 }}>{base.filter(x=>f.filter(x,currentUser.id)).length}</span></button>)}
           {mode==="kanban"&&<button onClick={()=>setShowFin(v=>!v)} style={{ padding:"5px 12px", borderRadius:20, border:`1.5px solid ${showFin?"#16a34a":"#e2e8f0"}`, background:showFin?"#f0fdf4":"#fff", color:showFin?"#16a34a":"#64748b", cursor:"pointer", fontSize:12, fontWeight:showFin?600:400, marginLeft:"auto", fontFamily:"'DM Sans',sans-serif" }}>{showFin?"Ocultar finalizados":"Mostrar finalizados"}</button>}
         </div>
       </div>
       {mode==="kanban"&&!bp.isMobile&&<KanbanView requests={base} openRequest={openRequest} kanbanCols={kanbanCols} />}
-      {mode==="list"&&<div style={{ display:"flex", flexDirection:"column", gap:10 }}>{base.map(r=><RequestCard key={r.id} r={r} onClick={()=>openRequest(r.id)} />)}{!base.length&&<div style={{ background:"#fff", borderRadius:12, border:"2px dashed #e2e8f0", padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhuma solicitaÃ§Ã£o encontrada.</div>}</div>}
+      {mode==="list"&&<div style={{ display:"flex", flexDirection:"column", gap:10 }}>{base.map(r=><RequestCard key={r.id} r={r} onClick={()=>openRequest(r.id)} />)}{!base.length&&<div style={{ background:"#fff", borderRadius:12, border:"2px dashed #e2e8f0", padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhuma solicitação encontrada.</div>}</div>}
       {mode==="table"&&!bp.isMobile&&<TableView requests={base} openRequest={openRequest} />}
     </div>
   );
@@ -823,7 +823,7 @@ function KanbanView({ requests, openRequest, kanbanCols }) {
             <span style={{ background:isClosed?col.bg:"#f1f5f9", color:isClosed?col.color:"#64748b", borderRadius:20, padding:"2px 8px", fontSize:11, fontWeight:700, flexShrink:0, fontFamily:"'DM Sans',sans-serif" }}>{cr.length}</span>
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {cr.map(r=>{ const t=gt(r.team_id),p=gp(r.priority),a=gu(r.assignee_id); return (<div key={r.id} onClick={()=>openRequest(r.id)} style={{ background:"#fff", borderRadius:10, border:"1px solid #e2e8f0", padding:"11px 13px", cursor:"pointer", borderLeft:`3px solid ${t?.color||"#e2e8f0"}`, opacity:isClosed?0.75:1, transition:"all 0.15s" }} onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)";e.currentTarget.style.opacity="1";e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.opacity=isClosed?"0.75":"1";e.currentTarget.style.transform="none";}}><div style={{ fontSize:10, color:"#94a3b8", marginBottom:3, fontFamily:"monospace" }}>{r.protocol}</div><div style={{ fontWeight:600, fontSize:13, lineHeight:1.4, marginBottom:8, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div><div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}><div style={{ display:"flex", alignItems:"center" }}><PriorityDot priority={r.priority} /><span style={{ fontSize:11, color:p.color, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{p.label}</span></div>{a?<Avatar user={a} size={20} />:<span style={{ fontSize:11, color:"#cbd5e1" }}>â€”</span>}</div>{isClosed&&<div style={{ marginTop:6, fontSize:11, color:col.color, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{r.status==="finalizada"?"Finalizado "+fd(r.updated_at):"Cancelado"}</div>}</div>); })}
+            {cr.map(r=>{ const t=gt(r.team_id),p=gp(r.priority),a=gu(r.assignee_id); return (<div key={r.id} onClick={()=>openRequest(r.id)} style={{ background:"#fff", borderRadius:10, border:"1px solid #e2e8f0", padding:"11px 13px", cursor:"pointer", borderLeft:`3px solid ${t?.color||"#e2e8f0"}`, opacity:isClosed?0.75:1, transition:"all 0.15s" }} onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)";e.currentTarget.style.opacity="1";e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.opacity=isClosed?"0.75":"1";e.currentTarget.style.transform="none";}}><div style={{ fontSize:10, color:"#94a3b8", marginBottom:3, fontFamily:"monospace" }}>{r.protocol}</div><div style={{ fontWeight:600, fontSize:13, lineHeight:1.4, marginBottom:8, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div><div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}><div style={{ display:"flex", alignItems:"center" }}><PriorityDot priority={r.priority} /><span style={{ fontSize:11, color:p.color, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{p.label}</span></div>{a?<Avatar user={a} size={20} />:<span style={{ fontSize:11, color:"#cbd5e1" }}>—</span>}</div>{isClosed&&<div style={{ marginTop:6, fontSize:11, color:col.color, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{r.status==="finalizada"?"Finalizado "+fd(r.updated_at):"Cancelado"}</div>}</div>); })}
             {!cr.length&&<div style={{ background:"#f8fafc", border:"2px dashed #e2e8f0", borderRadius:10, padding:"18px", textAlign:"center", color:"#cbd5e1", fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>Vazio</div>}
           </div>
         </div>
@@ -836,31 +836,31 @@ function TableView({ requests, openRequest }) {
   return (
     <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"auto" }}>
       <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
-        <thead><tr style={{ background:"#f8fafc", borderBottom:"1px solid #e2e8f0" }}>{["Protocolo","TÃ­tulo","Equipe","Status","Prioridade","ResponsÃ¡vel","Atualizado"].map(h=><th key={h} style={{ padding:"12px 16px", textAlign:"left", fontWeight:600, color:"#374151", fontSize:12, whiteSpace:"nowrap", fontFamily:"'Outfit',sans-serif" }}>{h}</th>)}</tr></thead>
-        <tbody>{requests.map(r=>{ const s=gs(r.status),t=gt(r.team_id),a=gu(r.assignee_id); return (<tr key={r.id} onClick={()=>openRequest(r.id)} style={{ borderBottom:"1px solid #f1f5f9", cursor:"pointer" }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><td style={{ padding:"11px 16px", fontFamily:"monospace", fontSize:12, color:"#1e3d6e", fontWeight:600, whiteSpace:"nowrap" }}>{r.protocol}</td><td style={{ padding:"11px 16px", fontWeight:500, maxWidth:200, fontFamily:"'DM Sans',sans-serif" }}><div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.title}</div></td><td style={{ padding:"11px 16px" }}>{t&&<span style={{ padding:"2px 8px", borderRadius:6, background:t.color+"20", color:t.color, fontWeight:600, fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>{t.name}</span>}</td><td style={{ padding:"11px 16px" }}><Badge label={s.label} color={s.color} bg={s.bg} small /></td><td style={{ padding:"11px 16px" }}><div style={{ display:"flex", alignItems:"center" }}><PriorityDot priority={r.priority} /><span style={{ color:gp(r.priority).color, fontWeight:600, fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>{gp(r.priority).label}</span></div></td><td style={{ padding:"11px 16px" }}>{a?<div style={{ display:"flex", alignItems:"center", gap:6 }}><Avatar user={a} size={22} /><span style={{ fontFamily:"'DM Sans',sans-serif" }}>{a.full_name.split(" ")[0]}</span></div>:<span style={{ color:"#cbd5e1" }}>â€”</span>}</td><td style={{ padding:"11px 16px", color:"#94a3b8", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{fd(r.updated_at)}</td></tr>); })}{!requests.length&&<tr><td colSpan={7} style={{ padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhuma solicitaÃ§Ã£o encontrada.</td></tr>}</tbody>
+        <thead><tr style={{ background:"#f8fafc", borderBottom:"1px solid #e2e8f0" }}>{["Protocolo","Título","Equipe","Status","Prioridade","Responsável","Atualizado"].map(h=><th key={h} style={{ padding:"12px 16px", textAlign:"left", fontWeight:600, color:"#374151", fontSize:12, whiteSpace:"nowrap", fontFamily:"'Outfit',sans-serif" }}>{h}</th>)}</tr></thead>
+        <tbody>{requests.map(r=>{ const s=gs(r.status),t=gt(r.team_id),a=gu(r.assignee_id); return (<tr key={r.id} onClick={()=>openRequest(r.id)} style={{ borderBottom:"1px solid #f1f5f9", cursor:"pointer" }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><td style={{ padding:"11px 16px", fontFamily:"monospace", fontSize:12, color:"#1e3d6e", fontWeight:600, whiteSpace:"nowrap" }}>{r.protocol}</td><td style={{ padding:"11px 16px", fontWeight:500, maxWidth:200, fontFamily:"'DM Sans',sans-serif" }}><div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.title}</div></td><td style={{ padding:"11px 16px" }}>{t&&<span style={{ padding:"2px 8px", borderRadius:6, background:t.color+"20", color:t.color, fontWeight:600, fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>{t.name}</span>}</td><td style={{ padding:"11px 16px" }}><Badge label={s.label} color={s.color} bg={s.bg} small /></td><td style={{ padding:"11px 16px" }}><div style={{ display:"flex", alignItems:"center" }}><PriorityDot priority={r.priority} /><span style={{ color:gp(r.priority).color, fontWeight:600, fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>{gp(r.priority).label}</span></div></td><td style={{ padding:"11px 16px" }}>{a?<div style={{ display:"flex", alignItems:"center", gap:6 }}><Avatar user={a} size={22} /><span style={{ fontFamily:"'DM Sans',sans-serif" }}>{a.full_name.split(" ")[0]}</span></div>:<span style={{ color:"#cbd5e1" }}>—</span>}</td><td style={{ padding:"11px 16px", color:"#94a3b8", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{fd(r.updated_at)}</td></tr>); })}{!requests.length&&<tr><td colSpan={7} style={{ padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhuma solicitação encontrada.</td></tr>}</tbody>
       </table>
     </div>
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // HISTORICO VIEW
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function HistoricoView({ requests, currentUser, openRequest, bp }) {
   const [filters,setFilters]=useState({team:"",status:"finalizada",search:"",dateFrom:"",dateTo:""});
   const [showFilters,setShowFilters]=useState(false);
   const sf=(k,v)=>setFilters(f=>({...f,[k]:v}));
   const base=useMemo(()=>{ let r=requests.filter(x=>["finalizada","cancelada"].includes(x.status)); if(currentUser.role==="membro_equipe") r=r.filter(x=>x.team_id===currentUser.team_id||x.assignee_id===currentUser.id); return r;},[requests,currentUser]);
   const filtered=useMemo(()=>{ let r=base; if(filters.team) r=r.filter(x=>x.team_id===filters.team); if(filters.status) r=r.filter(x=>x.status===filters.status); if(filters.search) r=r.filter(x=>x.title.toLowerCase().includes(filters.search.toLowerCase())||x.protocol.includes(filters.search)); if(filters.dateFrom) r=r.filter(x=>new Date(x.updated_at)>=new Date(filters.dateFrom)); if(filters.dateTo) r=r.filter(x=>new Date(x.updated_at)<=new Date(filters.dateTo+"T23:59:59")); return r.sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));},[base,filters]);
-  const metrics=useMemo(()=>{ const fin=base.filter(x=>x.status==="finalizada"); const canc=base.filter(x=>x.status==="cancelada"); const wt=fin.filter(r=>r.created_at&&r.updated_at); const avgDays=wt.length?(wt.reduce((acc,r)=>acc+Math.max(0,(new Date(r.updated_at)-new Date(r.created_at))/86400000),0)/wt.length).toFixed(1):"â€”"; const byTeam=TEAMS.map(t=>({...t,total:fin.filter(r=>r.team_id===t.id).length,canceladas:canc.filter(r=>r.team_id===t.id).length})); const now=new Date(); const byMonth=Array.from({length:4},(_,i)=>{ const d=new Date(now.getFullYear(),now.getMonth()-i,1); return{label:d.toLocaleDateString("pt-BR",{month:"short",year:"2-digit"}),count:fin.filter(r=>{ const rd=new Date(r.updated_at); return rd.getMonth()===d.getMonth()&&rd.getFullYear()===d.getFullYear(); }).length}; }).reverse(); const ac={}; fin.forEach(r=>{ if(r.assignee_id) ac[r.assignee_id]=(ac[r.assignee_id]||0)+1; }); const topId=Object.entries(ac).sort((a,b)=>b[1]-a[1])[0]?.[0]; return{fin:fin.length,canc:canc.length,avgDays,byTeam,byMonth,topAssignee:topId?gu(topId):null,topCount:topId?ac[topId]:0};},[base]);
+  const metrics=useMemo(()=>{ const fin=base.filter(x=>x.status==="finalizada"); const canc=base.filter(x=>x.status==="cancelada"); const wt=fin.filter(r=>r.created_at&&r.updated_at); const avgDays=wt.length?(wt.reduce((acc,r)=>acc+Math.max(0,(new Date(r.updated_at)-new Date(r.created_at))/86400000),0)/wt.length).toFixed(1):"—"; const byTeam=TEAMS.map(t=>({...t,total:fin.filter(r=>r.team_id===t.id).length,canceladas:canc.filter(r=>r.team_id===t.id).length})); const now=new Date(); const byMonth=Array.from({length:4},(_,i)=>{ const d=new Date(now.getFullYear(),now.getMonth()-i,1); return{label:d.toLocaleDateString("pt-BR",{month:"short",year:"2-digit"}),count:fin.filter(r=>{ const rd=new Date(r.updated_at); return rd.getMonth()===d.getMonth()&&rd.getFullYear()===d.getFullYear(); }).length}; }).reverse(); const ac={}; fin.forEach(r=>{ if(r.assignee_id) ac[r.assignee_id]=(ac[r.assignee_id]||0)+1; }); const topId=Object.entries(ac).sort((a,b)=>b[1]-a[1])[0]?.[0]; return{fin:fin.length,canc:canc.length,avgDays,byTeam,byMonth,topAssignee:topId?gu(topId):null,topCount:topId?ac[topId]:0};},[base]);
   const maxBar=Math.max(...metrics.byMonth.map(m=>m.count),1);
   return (
     <div style={{ paddingBottom:bp.isMobile?80:0 }}>
       <div style={{ display:"grid", gridTemplateColumns:bp.isMobile?"repeat(2,1fr)":"repeat(4,1fr)", gap:12, marginBottom:20 }}>
         <MetricCard label="Finalizadas" value={metrics.fin} color="#16a34a" bp={bp} />
         <MetricCard label="Canceladas" value={metrics.canc} color="#dc2626" bp={bp} />
-        <MetricCard label="Tempo mÃ©dio" value={metrics.avgDays==="â€”"?"â€”":metrics.avgDays+"d"} color="#1e3d6e" sub="por chamado" bp={bp} />
-        <div style={{ background:"#fff", borderRadius:12, padding:bp.isMobile?"12px 14px":"16px 18px", border:"1px solid #e2e8f0", textAlign:"center" }}>{metrics.topAssignee?<><div style={{ display:"flex", justifyContent:"center", marginBottom:6 }}><Avatar user={metrics.topAssignee} size={28} /></div><div style={{ fontSize:12, fontWeight:700, color:"#374151", fontFamily:"'DM Sans',sans-serif" }}>{metrics.topAssignee.full_name.split(" ")[0]}</div><div style={{ fontSize:11, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>{metrics.topCount} finalizados</div></>:<><div style={{ fontSize:22, fontWeight:700, color:"#94a3b8", fontFamily:"'Outfit',sans-serif" }}>â€”</div><div style={{ fontSize:11, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>Top responsÃ¡vel</div></>}</div>
+        <MetricCard label="Tempo médio" value={metrics.avgDays==="—"?"—":metrics.avgDays+"d"} color="#1e3d6e" sub="por chamado" bp={bp} />
+        <div style={{ background:"#fff", borderRadius:12, padding:bp.isMobile?"12px 14px":"16px 18px", border:"1px solid #e2e8f0", textAlign:"center" }}>{metrics.topAssignee?<><div style={{ display:"flex", justifyContent:"center", marginBottom:6 }}><Avatar user={metrics.topAssignee} size={28} /></div><div style={{ fontSize:12, fontWeight:700, color:"#374151", fontFamily:"'DM Sans',sans-serif" }}>{metrics.topAssignee.full_name.split(" ")[0]}</div><div style={{ fontSize:11, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>{metrics.topCount} finalizados</div></>:<><div style={{ fontSize:22, fontWeight:700, color:"#94a3b8", fontFamily:"'Outfit',sans-serif" }}>—</div><div style={{ fontSize:11, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>Top responsável</div></>}</div>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:bp.isDesktop?"1fr 1fr":"1fr", gap:14, marginBottom:20 }}>
         <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"18px 20px" }}>
@@ -868,7 +868,7 @@ function HistoricoView({ requests, currentUser, openRequest, bp }) {
           {metrics.byTeam.map(t=><div key={t.id} style={{ marginBottom:12 }}><div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}><span style={{ fontSize:13, fontWeight:600, color:t.color, fontFamily:"'DM Sans',sans-serif" }}>{t.name}</span><span style={{ fontSize:13, color:"#374151", fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{t.total}</span></div><div style={{ height:8, borderRadius:4, background:"#f1f5f9", overflow:"hidden" }}><div style={{ height:"100%", borderRadius:4, background:t.color, width:metrics.fin?`${Math.round((t.total/metrics.fin)*100)}%`:"0%", transition:"width 0.4s" }} /></div></div>)}
         </div>
         <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"18px 20px" }}>
-          <div style={{ fontWeight:600, fontSize:13, marginBottom:14, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>Finalizados por mÃªs</div>
+          <div style={{ fontWeight:600, fontSize:13, marginBottom:14, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>Finalizados por mês</div>
           <div style={{ display:"flex", alignItems:"flex-end", gap:10, height:90 }}>
             {metrics.byMonth.map((m,i)=><div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}><span style={{ fontSize:11, fontWeight:700, color:"#374151", fontFamily:"'DM Sans',sans-serif" }}>{m.count}</span><div style={{ width:"100%", borderRadius:"4px 4px 0 0", background:"#1e3d6e", opacity:m.count===0?0.15:0.75, height:m.count===0?4:Math.max(8,Math.round((m.count/maxBar)*60)), transition:"height 0.4s" }} /><span style={{ fontSize:10, color:"#94a3b8", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{m.label}</span></div>)}
           </div>
@@ -876,20 +876,20 @@ function HistoricoView({ requests, currentUser, openRequest, bp }) {
       </div>
       <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"12px 14px", marginBottom:14 }}>
         <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
-          <input value={filters.search} onChange={e=>sf("search",e.target.value)} placeholder="Buscar por tÃ­tulo ou protocolo..." style={{ ...inp, flex:"1 1 180px" }} />
+          <input value={filters.search} onChange={e=>sf("search",e.target.value)} placeholder="Buscar por título ou protocolo..." style={{ ...inp, flex:"1 1 180px" }} />
           {bp.isMobile?<button onClick={()=>setShowFilters(v=>!v)} style={{ padding:"10px 12px", border:"1px solid #e2e8f0", borderRadius:8, background:"#fff", cursor:"pointer" }}><Icon name="filter" size={15} color="#64748b" /></button>:<><select value={filters.status} onChange={e=>sf("status",e.target.value)} style={{ ...inp, width:"auto" }}><option value="">Todos</option><option value="finalizada">Finalizada</option><option value="cancelada">Cancelada</option></select><select value={filters.team} onChange={e=>sf("team",e.target.value)} style={{ ...inp, width:"auto" }}><option value="">Todas equipes</option>{TEAMS.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select><input type="date" value={filters.dateFrom} onChange={e=>sf("dateFrom",e.target.value)} style={{ ...inp, width:"auto" }} /><input type="date" value={filters.dateTo} onChange={e=>sf("dateTo",e.target.value)} style={{ ...inp, width:"auto" }} /></>}
           <span style={{ fontSize:12, color:"#94a3b8", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{filtered.length} registro{filtered.length!==1?"s":""}</span>
         </div>
         {bp.isMobile&&showFilters&&<div style={{ marginTop:10, display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}><select value={filters.status} onChange={e=>sf("status",e.target.value)} style={{ ...inp, fontSize:13 }}><option value="">Todos</option><option value="finalizada">Finalizada</option><option value="cancelada">Cancelada</option></select><select value={filters.team} onChange={e=>sf("team",e.target.value)} style={{ ...inp, fontSize:13 }}><option value="">Todas equipes</option>{TEAMS.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></div>}
       </div>
-      {bp.isMobile||bp.isTablet?<div style={{ display:"flex", flexDirection:"column", gap:10 }}>{filtered.map(r=><RequestCard key={r.id} r={r} onClick={()=>openRequest(r.id)} />)}{!filtered.length&&<div style={{ background:"#fff", borderRadius:12, border:"2px dashed #e2e8f0", padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhum registro.</div>}</div>:<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"auto" }}><table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}><thead><tr style={{ background:"#f8fafc", borderBottom:"1px solid #e2e8f0" }}>{["Protocolo","TÃ­tulo","Equipe","Status","ResponsÃ¡vel","Solicitante","Resolvido em"].map(h=><th key={h} style={{ padding:"12px 16px", textAlign:"left", fontWeight:600, color:"#374151", fontSize:12, whiteSpace:"nowrap", fontFamily:"'Outfit',sans-serif" }}>{h}</th>)}</tr></thead><tbody>{filtered.map(r=>{ const s=gs(r.status),t=gt(r.team_id),a=gu(r.assignee_id),req=gu(r.requester_id); const dur=r.created_at&&r.updated_at?Math.max(0,Math.round((new Date(r.updated_at)-new Date(r.created_at))/86400000)):null; return (<tr key={r.id} onClick={()=>openRequest(r.id)} style={{ borderBottom:"1px solid #f1f5f9", cursor:"pointer" }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><td style={{ padding:"11px 16px", fontFamily:"monospace", fontSize:12, color:"#1e3d6e", fontWeight:600, whiteSpace:"nowrap" }}>{r.protocol}</td><td style={{ padding:"11px 16px", fontWeight:500, maxWidth:200, fontFamily:"'DM Sans',sans-serif" }}><div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.title}</div></td><td style={{ padding:"11px 16px" }}>{t&&<span style={{ padding:"2px 8px", borderRadius:6, background:t.color+"20", color:t.color, fontWeight:600, fontSize:12 }}>{t.name}</span>}</td><td style={{ padding:"11px 16px" }}><span style={{ padding:"2px 8px", borderRadius:6, background:s.bg, color:s.color, fontWeight:600, fontSize:12 }}>{s.label}</span></td><td style={{ padding:"11px 16px" }}>{a?<div style={{ display:"flex", alignItems:"center", gap:6 }}><Avatar user={a} size={22} /><span style={{ fontFamily:"'DM Sans',sans-serif" }}>{a.full_name.split(" ")[0]}</span></div>:<span style={{ color:"#cbd5e1" }}>â€”</span>}</td><td style={{ padding:"11px 16px" }}>{req?<div style={{ display:"flex", alignItems:"center", gap:6 }}><Avatar user={req} size={22} /><span style={{ fontFamily:"'DM Sans',sans-serif" }}>{req.full_name.split(" ")[0]}</span></div>:<span style={{ color:"#cbd5e1" }}>â€”</span>}</td><td style={{ padding:"11px 16px", whiteSpace:"nowrap" }}><div style={{ fontSize:12, color:"#374151", fontFamily:"'DM Sans',sans-serif" }}>{fd(r.updated_at)}</div>{dur!==null&&<div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{dur}d de duraÃ§Ã£o</div>}</td></tr>); })}{!filtered.length&&<tr><td colSpan={7} style={{ padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhum registro encontrado.</td></tr>}</tbody></table></div>}
+      {bp.isMobile||bp.isTablet?<div style={{ display:"flex", flexDirection:"column", gap:10 }}>{filtered.map(r=><RequestCard key={r.id} r={r} onClick={()=>openRequest(r.id)} />)}{!filtered.length&&<div style={{ background:"#fff", borderRadius:12, border:"2px dashed #e2e8f0", padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhum registro.</div>}</div>:<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"auto" }}><table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}><thead><tr style={{ background:"#f8fafc", borderBottom:"1px solid #e2e8f0" }}>{["Protocolo","Título","Equipe","Status","Responsável","Solicitante","Resolvido em"].map(h=><th key={h} style={{ padding:"12px 16px", textAlign:"left", fontWeight:600, color:"#374151", fontSize:12, whiteSpace:"nowrap", fontFamily:"'Outfit',sans-serif" }}>{h}</th>)}</tr></thead><tbody>{filtered.map(r=>{ const s=gs(r.status),t=gt(r.team_id),a=gu(r.assignee_id),req=gu(r.requester_id); const dur=r.created_at&&r.updated_at?Math.max(0,Math.round((new Date(r.updated_at)-new Date(r.created_at))/86400000)):null; return (<tr key={r.id} onClick={()=>openRequest(r.id)} style={{ borderBottom:"1px solid #f1f5f9", cursor:"pointer" }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><td style={{ padding:"11px 16px", fontFamily:"monospace", fontSize:12, color:"#1e3d6e", fontWeight:600, whiteSpace:"nowrap" }}>{r.protocol}</td><td style={{ padding:"11px 16px", fontWeight:500, maxWidth:200, fontFamily:"'DM Sans',sans-serif" }}><div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.title}</div></td><td style={{ padding:"11px 16px" }}>{t&&<span style={{ padding:"2px 8px", borderRadius:6, background:t.color+"20", color:t.color, fontWeight:600, fontSize:12 }}>{t.name}</span>}</td><td style={{ padding:"11px 16px" }}><span style={{ padding:"2px 8px", borderRadius:6, background:s.bg, color:s.color, fontWeight:600, fontSize:12 }}>{s.label}</span></td><td style={{ padding:"11px 16px" }}>{a?<div style={{ display:"flex", alignItems:"center", gap:6 }}><Avatar user={a} size={22} /><span style={{ fontFamily:"'DM Sans',sans-serif" }}>{a.full_name.split(" ")[0]}</span></div>:<span style={{ color:"#cbd5e1" }}>—</span>}</td><td style={{ padding:"11px 16px" }}>{req?<div style={{ display:"flex", alignItems:"center", gap:6 }}><Avatar user={req} size={22} /><span style={{ fontFamily:"'DM Sans',sans-serif" }}>{req.full_name.split(" ")[0]}</span></div>:<span style={{ color:"#cbd5e1" }}>—</span>}</td><td style={{ padding:"11px 16px", whiteSpace:"nowrap" }}><div style={{ fontSize:12, color:"#374151", fontFamily:"'DM Sans',sans-serif" }}>{fd(r.updated_at)}</div>{dur!==null&&<div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{dur}d de duração</div>}</td></tr>); })}{!filtered.length&&<tr><td colSpan={7} style={{ padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhum registro encontrado.</td></tr>}</tbody></table></div>}
     </div>
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // NEW REQUEST
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function NewRequestView({ currentUser, setView, setRequests, showToast, bp, teams, requestTypes, users, api, loadAllData }) {
   const [form,setForm]=useState({title:"",description:"",team_id:"",type_id:"",priority:"media",assignee_id:"",client_name:""});
   const types=requestTypes.filter(t=>t.team_id===form.team_id); const members=users.filter(u=>u.team_id===form.team_id&&u.role==="membro_equipe"); const back=currentUser.role==="solicitante"?"my-requests":"requests";
@@ -922,26 +922,26 @@ function NewRequestView({ currentUser, setView, setRequests, showToast, bp, team
     <div style={{ maxWidth:640, paddingBottom:bp.isMobile?80:0 }}>
       <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"hidden" }}>
         <div style={{ padding:"16px 20px", borderBottom:"1px solid #f1f5f9", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-          <h2 style={{ fontSize:16, fontWeight:600, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Nova SolicitaÃ§Ã£o</h2>
+          <h2 style={{ fontSize:16, fontWeight:600, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Nova Solicitação</h2>
           <button onClick={()=>setView(back)} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:8, padding:"7px 14px", cursor:"pointer", fontSize:13, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>Cancelar</button>
         </div>
         <div style={{ padding:"20px" }}>
           <div style={{ display:"grid", gap:14 }}>
-            <Field label="TÃ­tulo *"><input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Descreva brevemente sua solicitaÃ§Ã£o" style={inp} /></Field>
+            <Field label="Título *"><input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="Descreva brevemente sua solicitação" style={inp} /></Field>
             <div style={{ display:"grid", gridTemplateColumns:bp.isMobile?"1fr":"1fr 1fr", gap:12 }}>
               <Field label="Equipe *"><select value={form.team_id} onChange={e=>setForm(f=>({...f,team_id:e.target.value,type_id:"",assignee_id:""}))} style={inp}><option value="">Selecione a equipe</option>{teams.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
-              <Field label="Tipo"><select value={form.type_id} onChange={e=>setForm(f=>({...f,type_id:e.target.value}))} style={inp} disabled={!form.team_id}><option value="">Tipo de solicitaÃ§Ã£o</option>{types.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
+              <Field label="Tipo"><select value={form.type_id} onChange={e=>setForm(f=>({...f,type_id:e.target.value}))} style={inp} disabled={!form.team_id}><option value="">Tipo de solicitação</option>{types.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></Field>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:bp.isMobile?"1fr":"1fr 1fr", gap:12 }}>
               <Field label="Prioridade"><select value={form.priority} onChange={e=>setForm(f=>({...f,priority:e.target.value}))} style={inp}>{PRIORITIES.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select></Field>
-              <Field label="ResponsÃ¡vel (opcional)"><select value={form.assignee_id} onChange={e=>setForm(f=>({...f,assignee_id:e.target.value}))} style={inp} disabled={!form.team_id}><option value="">Sem preferÃªncia</option>{members.map(u=><option key={u.id} value={u.id}>{u.full_name}</option>)}</select></Field>
+              <Field label="Responsável (opcional)"><select value={form.assignee_id} onChange={e=>setForm(f=>({...f,assignee_id:e.target.value}))} style={inp} disabled={!form.team_id}><option value="">Sem preferência</option>{members.map(u=><option key={u.id} value={u.id}>{u.full_name}</option>)}</select></Field>
             </div>
             <Field label="Cliente / Departamento"><input value={form.client_name} onChange={e=>setForm(f=>({...f,client_name:e.target.value}))} placeholder="Ex: Comercial, Diretoria..." style={inp} /></Field>
-            <Field label="DescriÃ§Ã£o"><textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="Descreva com detalhes o que vocÃª precisa..." rows={4} style={{ ...inp, resize:"vertical" }} /></Field>
+            <Field label="Descrição"><textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} placeholder="Descreva com detalhes o que você precisa..." rows={4} style={{ ...inp, resize:"vertical" }} /></Field>
           </div>
           <div style={{ marginTop:20, display:"flex", gap:10, justifyContent:"flex-end" }}>
             <button onClick={()=>setView(back)} style={{ padding:"10px 20px", border:"1px solid #e2e8f0", borderRadius:8, background:"#fff", cursor:"pointer", fontSize:13, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>Cancelar</button>
-            <button onClick={create} style={{ padding:"10px 24px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>Criar SolicitaÃ§Ã£o</button>
+            <button onClick={create} style={{ padding:"10px 24px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>Criar Solicitação</button>
           </div>
         </div>
       </div>
@@ -949,14 +949,14 @@ function NewRequestView({ currentUser, setView, setRequests, showToast, bp, team
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // ADMIN USERS
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 const EMPTY_FORM={full_name:"",email:"",role:"solicitante",team_id:"",whatsapp:"",is_active:true};
 function UserModal({ user, onSave, onClose, bp }) {
   const isEdit=!!user; const [form,setForm]=useState(isEdit?{...user}:{...EMPTY_FORM}); const [errors,setErrors]=useState({});
   const needsTeam=form.role==="membro_equipe";
-  const validate=()=>{ const e={}; if(!form.full_name.trim()) e.full_name="Nome obrigatÃ³rio"; if(!form.email.trim()) e.email="E-mail obrigatÃ³rio"; else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email="E-mail invÃ¡lido"; if(needsTeam&&!form.team_id) e.team_id="Selecione a equipe"; return e; };
+  const validate=()=>{ const e={}; if(!form.full_name.trim()) e.full_name="Nome obrigatório"; if(!form.email.trim()) e.email="E-mail obrigatório"; else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email="E-mail inválido"; if(needsTeam&&!form.team_id) e.team_id="Selecione a equipe"; return e; };
   const save=()=>{ const e=validate(); if(Object.keys(e).length){setErrors(e);return;} onSave(isEdit?{...form,id:form.id}:{...form}); };
   const set=(k,v)=>{ setForm(f=>({...f,[k]:v})); setErrors(e=>({...e,[k]:undefined})); };
   const fileRef=useRef();
@@ -965,7 +965,7 @@ function UserModal({ user, onSave, onClose, bp }) {
     <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.5)", zIndex:1000, display:"flex", alignItems:bp.isMobile?"flex-end":"center", justifyContent:"center", padding:bp.isMobile?0:"20px" }}>
       <div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:bp.isMobile?"16px 16px 0 0":"14px", width:"100%", maxWidth:520, maxHeight:"92vh", overflow:"auto", boxShadow:"0 24px 80px rgba(0,0,0,0.2)" }}>
         <div style={{ padding:"18px 20px", borderBottom:"1px solid #f1f5f9", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, background:"#fff", zIndex:1 }}>
-          <div><h3 style={{ fontSize:16, fontWeight:600, color:"#0f172a", fontFamily:"'Outfit',sans-serif" }}>{isEdit?"Editar UsuÃ¡rio":"Novo UsuÃ¡rio"}</h3><p style={{ fontSize:12, color:"#94a3b8", marginTop:2, fontFamily:"'DM Sans',sans-serif" }}>{isEdit?"Atualize as informaÃ§Ãµes":"Preencha os dados para criar o acesso"}</p></div>
+          <div><h3 style={{ fontSize:16, fontWeight:600, color:"#0f172a", fontFamily:"'Outfit',sans-serif" }}>{isEdit?"Editar Usuário":"Novo Usuário"}</h3><p style={{ fontSize:12, color:"#94a3b8", marginTop:2, fontFamily:"'DM Sans',sans-serif" }}>{isEdit?"Atualize as informações":"Preencha os dados para criar o acesso"}</p></div>
           <button onClick={onClose} style={{ background:"#f1f5f9", border:"none", borderRadius:"50%", width:32, height:32, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><Icon name="x" size={15} color="#64748b" /></button>
         </div>
         <div style={{ padding:"20px" }}>
@@ -977,27 +977,27 @@ function UserModal({ user, onSave, onClose, bp }) {
               <input type="file" accept="image/*" ref={fileRef} style={{ display:"none" }} onChange={handleAvatarChange} />
             </div>
             <div>
-              <div style={{ fontWeight:600, fontSize:14, color:"#1e293b", fontFamily:"'DM Sans',sans-serif" }}>{form.full_name||"Nome do usuÃ¡rio"}</div>
+              <div style={{ fontWeight:600, fontSize:14, color:"#1e293b", fontFamily:"'DM Sans',sans-serif" }}>{form.full_name||"Nome do usuário"}</div>
               <div style={{ fontSize:12, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{form.email||"email@empresa.com"}</div>
               {form.role&&<span style={{ fontSize:11, padding:"2px 8px", borderRadius:20, background:grc(form.role).bg, color:grc(form.role).color, fontWeight:600, marginTop:4, display:"inline-block", fontFamily:"'DM Sans',sans-serif" }}>{grc(form.role).label}</span>}
             </div>
           </div>
           <div style={{ display:"grid", gap:14 }}>
-            <Field label="Nome completo *"><input value={form.full_name} onChange={e=>set("full_name",e.target.value)} placeholder="Ex: JoÃ£o Silva" style={{ ...inp, borderColor:errors.full_name?"#fca5a5":"#e2e8f0" }} />{errors.full_name&&<span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block", fontFamily:"'DM Sans',sans-serif" }}>{errors.full_name}</span>}</Field>
-            <Field label="E-mail *"><input value={form.email} onChange={e=>set("email",e.target.value)} placeholder="joao@alpesmidia.com" type="email" style={{ ...inp, borderColor:errors.email?"#fca5a5":"#e2e8f0" }} disabled={isEdit} />{errors.email&&<span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block" }}>{errors.email}</span>}{isEdit&&<span style={{ fontSize:11, color:"#94a3b8", marginTop:4, display:"block", fontFamily:"'DM Sans',sans-serif" }}>E-mail nÃ£o pode ser alterado.</span>}</Field>
+            <Field label="Nome completo *"><input value={form.full_name} onChange={e=>set("full_name",e.target.value)} placeholder="Ex: João Silva" style={{ ...inp, borderColor:errors.full_name?"#fca5a5":"#e2e8f0" }} />{errors.full_name&&<span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block", fontFamily:"'DM Sans',sans-serif" }}>{errors.full_name}</span>}</Field>
+            <Field label="E-mail *"><input value={form.email} onChange={e=>set("email",e.target.value)} placeholder="joao@alpesmidia.com" type="email" style={{ ...inp, borderColor:errors.email?"#fca5a5":"#e2e8f0" }} disabled={isEdit} />{errors.email&&<span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block" }}>{errors.email}</span>}{isEdit&&<span style={{ fontSize:11, color:"#94a3b8", marginTop:4, display:"block", fontFamily:"'DM Sans',sans-serif" }}>E-mail não pode ser alterado.</span>}</Field>
             <Field label="Perfil de acesso *">
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
                 {ROLES.map(r=><button key={r.key} onClick={()=>{set("role",r.key);if(r.key!=="membro_equipe") set("team_id","");}} style={{ padding:"10px 12px", borderRadius:10, border:`2px solid ${form.role===r.key?r.color:"#e2e8f0"}`, background:form.role===r.key?r.bg:"#fff", cursor:"pointer", textAlign:"left", transition:"all 0.15s" }}><div style={{ fontWeight:600, fontSize:13, color:form.role===r.key?r.color:"#374151", marginBottom:2, fontFamily:"'DM Sans',sans-serif" }}>{r.label}</div><div style={{ fontSize:11, color:"#94a3b8", lineHeight:1.3, fontFamily:"'DM Sans',sans-serif" }}>{r.desc}</div></button>)}
               </div>
             </Field>
             {needsTeam&&<Field label="Equipe *"><div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>{TEAMS.map(t=><button key={t.id} onClick={()=>set("team_id",t.id)} style={{ padding:"10px 12px", borderRadius:10, border:`2px solid ${form.team_id===t.id?t.color:"#e2e8f0"}`, background:form.team_id===t.id?t.color+"15":"#fff", cursor:"pointer", display:"flex", alignItems:"center", gap:8 }}><div style={{ width:10, height:10, borderRadius:"50%", background:t.color, flexShrink:0 }} /><span style={{ fontSize:13, fontWeight:600, color:form.team_id===t.id?t.color:"#374151", fontFamily:"'DM Sans',sans-serif" }}>{t.name}</span></button>)}</div>{errors.team_id&&<span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block" }}>{errors.team_id}</span>}</Field>}
-            <Field label="WhatsApp (opcional)"><div style={{ position:"relative" }}><Icon name="phone" size={15} color="#475569" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }} /><input value={form.whatsapp||""} onChange={e=>set("whatsapp",e.target.value.replace(/\D/g,""))} placeholder="5511999990000" type="tel" style={{ ...inp, paddingLeft:36 }} /></div><span style={{ fontSize:11, color:"#94a3b8", marginTop:4, display:"block", fontFamily:"'DM Sans',sans-serif" }}>DDI + DDD + nÃºmero</span></Field>
+            <Field label="WhatsApp (opcional)"><div style={{ position:"relative" }}><Icon name="phone" size={15} color="#475569" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }} /><input value={form.whatsapp||""} onChange={e=>set("whatsapp",e.target.value.replace(/\D/g,""))} placeholder="5511999990000" type="tel" style={{ ...inp, paddingLeft:36 }} /></div><span style={{ fontSize:11, color:"#94a3b8", marginTop:4, display:"block", fontFamily:"'DM Sans',sans-serif" }}>DDI + DDD + número</span></Field>
             {isEdit&&<Field label="Status"><div style={{ display:"flex", gap:8 }}>{[{v:true,l:"Ativo",c:"#16a34a",b:"#f0fdf4"},{v:false,l:"Inativo",c:"#dc2626",b:"#fef2f2"}].map(opt=><button key={String(opt.v)} onClick={()=>set("is_active",opt.v)} style={{ flex:1, padding:"10px", borderRadius:8, border:`2px solid ${form.is_active===opt.v?opt.c:"#e2e8f0"}`, background:form.is_active===opt.v?opt.b:"#fff", cursor:"pointer", fontWeight:600, fontSize:13, color:form.is_active===opt.v?opt.c:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{opt.l}</button>)}</div></Field>}
           </div>
         </div>
         <div style={{ padding:"16px 20px", borderTop:"1px solid #f1f5f9", display:"flex", gap:10, justifyContent:"flex-end", position:"sticky", bottom:0, background:"#fff" }}>
           <button onClick={onClose} style={{ padding:"10px 20px", border:"1px solid #e2e8f0", borderRadius:8, background:"#fff", cursor:"pointer", fontSize:13, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>Cancelar</button>
-          <button onClick={save} style={{ padding:"10px 24px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{isEdit?"Salvar alteraÃ§Ãµes":"Criar usuÃ¡rio"}</button>
+          <button onClick={save} style={{ padding:"10px 24px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{isEdit?"Salvar alterações":"Criar usuário"}</button>
         </div>
       </div>
     </div>
@@ -1036,8 +1036,8 @@ function AdminUsers({ bp, showToast, users, setUsers, api }) {
   return (
     <div style={{ paddingBottom:bp.isMobile?80:0 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18, gap:10 }}>
-        <div><h2 style={{ fontSize:16, fontWeight:600, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>UsuÃ¡rios</h2><p style={{ fontSize:12, color:"#94a3b8", marginTop:2, fontFamily:"'DM Sans',sans-serif" }}>{users.length} cadastrado{users.length!==1?"s":""}</p></div>
-        <button onClick={()=>setModal("new")} style={{ padding:"9px 16px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}><Icon name="plus" size={15} color="#fff" /> {bp.isMobile?"Novo":"Novo usuÃ¡rio"}</button>
+        <div><h2 style={{ fontSize:16, fontWeight:600, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Usuários</h2><p style={{ fontSize:12, color:"#94a3b8", marginTop:2, fontFamily:"'DM Sans',sans-serif" }}>{users.length} cadastrado{users.length!==1?"s":""}</p></div>
+        <button onClick={()=>setModal("new")} style={{ padding:"9px 16px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}><Icon name="plus" size={15} color="#fff" /> {bp.isMobile?"Novo":"Novo usuário"}</button>
       </div>
       <div style={{ display:"flex", gap:10, marginBottom:14, flexWrap:"wrap" }}>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por nome ou e-mail..." style={{ ...inp, flex:"1 1 200px" }} />
@@ -1053,20 +1053,20 @@ function AdminUsers({ bp, showToast, users, setUsers, api }) {
       ):(
         <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"auto" }}>
           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
-            <thead><tr style={{ background:"#f8fafc", borderBottom:"1px solid #e2e8f0" }}>{["UsuÃ¡rio","E-mail","Perfil","Equipe","WhatsApp","Status","AÃ§Ãµes"].map(h=><th key={h} style={{ padding:"12px 16px", textAlign:"left", fontWeight:600, color:"#374151", fontSize:12, whiteSpace:"nowrap", fontFamily:"'Outfit',sans-serif" }}>{h}</th>)}</tr></thead>
-            <tbody>{filtered.map(u=>{ const team=gt(u.team_id); const active=u.is_active!==false; return (<tr key={u.id} style={{ borderBottom:"1px solid #f1f5f9", opacity:active?1:0.55 }}><td style={{ padding:"12px 16px" }}><div style={{ display:"flex", alignItems:"center", gap:10 }}><Avatar user={u} size={30} /><span style={{ fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{u.full_name}</span></div></td><td style={{ padding:"12px 16px", color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>{u.email}</td><td style={{ padding:"12px 16px" }}><RoleBadge role={u.role} /></td><td style={{ padding:"12px 16px" }}>{team?<span style={{ padding:"2px 8px", borderRadius:6, background:team.color+"20", color:team.color, fontWeight:600, fontSize:12 }}>{team.name}</span>:<span style={{ color:"#cbd5e1" }}>â€”</span>}</td><td style={{ padding:"12px 16px", color:"#64748b", fontFamily:"monospace", fontSize:12 }}>{u.whatsapp||<span style={{ color:"#cbd5e1" }}>â€”</span>}</td><td style={{ padding:"12px 16px" }}><span style={{ padding:"2px 8px", borderRadius:6, background:active?"#f0fdf4":"#f1f5f9", color:active?"#16a34a":"#94a3b8", fontWeight:600, fontSize:12 }}>{active?"Ativo":"Inativo"}</span></td><td style={{ padding:"12px 16px" }}><div style={{ display:"flex", gap:6 }}><button onClick={()=>setModal(u)} style={{ padding:"5px 10px", border:"1px solid #e2e8f0", borderRadius:6, background:"#fff", cursor:"pointer", display:"flex", alignItems:"center", gap:4, fontSize:12, color:"#374151", fontFamily:"'DM Sans',sans-serif" }}><Icon name="edit" size={12} color="#374151" /> Editar</button><button onClick={()=>active?setConfirmDeact(u):toggleActive(u)} style={{ padding:"5px 10px", border:`1px solid ${active?"#fecaca":"#bbf7d0"}`, borderRadius:6, background:active?"#fef2f2":"#f0fdf4", cursor:"pointer", fontSize:12, color:active?"#dc2626":"#16a34a", fontFamily:"'DM Sans',sans-serif" }}>{active?"Desativar":"Reativar"}</button></div></td></tr>); })}{!filtered.length&&<tr><td colSpan={7} style={{ padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhum usuÃ¡rio encontrado.</td></tr>}</tbody>
+            <thead><tr style={{ background:"#f8fafc", borderBottom:"1px solid #e2e8f0" }}>{["Usuário","E-mail","Perfil","Equipe","WhatsApp","Status","Ações"].map(h=><th key={h} style={{ padding:"12px 16px", textAlign:"left", fontWeight:600, color:"#374151", fontSize:12, whiteSpace:"nowrap", fontFamily:"'Outfit',sans-serif" }}>{h}</th>)}</tr></thead>
+            <tbody>{filtered.map(u=>{ const team=gt(u.team_id); const active=u.is_active!==false; return (<tr key={u.id} style={{ borderBottom:"1px solid #f1f5f9", opacity:active?1:0.55 }}><td style={{ padding:"12px 16px" }}><div style={{ display:"flex", alignItems:"center", gap:10 }}><Avatar user={u} size={30} /><span style={{ fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{u.full_name}</span></div></td><td style={{ padding:"12px 16px", color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>{u.email}</td><td style={{ padding:"12px 16px" }}><RoleBadge role={u.role} /></td><td style={{ padding:"12px 16px" }}>{team?<span style={{ padding:"2px 8px", borderRadius:6, background:team.color+"20", color:team.color, fontWeight:600, fontSize:12 }}>{team.name}</span>:<span style={{ color:"#cbd5e1" }}>—</span>}</td><td style={{ padding:"12px 16px", color:"#64748b", fontFamily:"monospace", fontSize:12 }}>{u.whatsapp||<span style={{ color:"#cbd5e1" }}>—</span>}</td><td style={{ padding:"12px 16px" }}><span style={{ padding:"2px 8px", borderRadius:6, background:active?"#f0fdf4":"#f1f5f9", color:active?"#16a34a":"#94a3b8", fontWeight:600, fontSize:12 }}>{active?"Ativo":"Inativo"}</span></td><td style={{ padding:"12px 16px" }}><div style={{ display:"flex", gap:6 }}><button onClick={()=>setModal(u)} style={{ padding:"5px 10px", border:"1px solid #e2e8f0", borderRadius:6, background:"#fff", cursor:"pointer", display:"flex", alignItems:"center", gap:4, fontSize:12, color:"#374151", fontFamily:"'DM Sans',sans-serif" }}><Icon name="edit" size={12} color="#374151" /> Editar</button><button onClick={()=>active?setConfirmDeact(u):toggleActive(u)} style={{ padding:"5px 10px", border:`1px solid ${active?"#fecaca":"#bbf7d0"}`, borderRadius:6, background:active?"#fef2f2":"#f0fdf4", cursor:"pointer", fontSize:12, color:active?"#dc2626":"#16a34a", fontFamily:"'DM Sans',sans-serif" }}>{active?"Desativar":"Reativar"}</button></div></td></tr>); })}{!filtered.length&&<tr><td colSpan={7} style={{ padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhum usuário encontrado.</td></tr>}</tbody>
           </table>
         </div>
       )}
       {modal&&<UserModal user={modal==="new"?null:modal} onSave={saveUser} onClose={()=>setModal(null)} bp={bp} />}
-      {confirmDeact&&<div onClick={()=>setConfirmDeact(null)} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.5)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}><div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:14, padding:"24px", maxWidth:380, width:"100%", boxShadow:"0 24px 60px rgba(0,0,0,0.2)", textAlign:"center" }}><Icon name="alertCircle" size={32} color="#dc2626" style={{ marginBottom:12 }} /><h3 style={{ fontWeight:600, fontSize:16, marginBottom:8, fontFamily:"'Outfit',sans-serif" }}>Desativar usuÃ¡rio?</h3><p style={{ fontSize:13, color:"#64748b", lineHeight:1.6, marginBottom:20, fontFamily:"'DM Sans',sans-serif" }}><strong>{confirmDeact.full_name}</strong> nÃ£o poderÃ¡ mais acessar o sistema.</p><div style={{ display:"flex", gap:10 }}><button onClick={()=>setConfirmDeact(null)} style={{ flex:1, padding:"10px", border:"1px solid #e2e8f0", borderRadius:8, background:"#fff", cursor:"pointer", fontSize:13, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>Cancelar</button><button onClick={()=>toggleActive(confirmDeact)} style={{ flex:1, padding:"10px", background:"#ef4444", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>Desativar</button></div></div></div>}
+      {confirmDeact&&<div onClick={()=>setConfirmDeact(null)} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.5)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}><div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:14, padding:"24px", maxWidth:380, width:"100%", boxShadow:"0 24px 60px rgba(0,0,0,0.2)", textAlign:"center" }}><Icon name="alertCircle" size={32} color="#dc2626" style={{ marginBottom:12 }} /><h3 style={{ fontWeight:600, fontSize:16, marginBottom:8, fontFamily:"'Outfit',sans-serif" }}>Desativar usuário?</h3><p style={{ fontSize:13, color:"#64748b", lineHeight:1.6, marginBottom:20, fontFamily:"'DM Sans',sans-serif" }}><strong>{confirmDeact.full_name}</strong> não poderá mais acessar o sistema.</p><div style={{ display:"flex", gap:10 }}><button onClick={()=>setConfirmDeact(null)} style={{ flex:1, padding:"10px", border:"1px solid #e2e8f0", borderRadius:8, background:"#fff", cursor:"pointer", fontSize:13, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>Cancelar</button><button onClick={()=>toggleActive(confirmDeact)} style={{ flex:1, padding:"10px", background:"#ef4444", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>Desativar</button></div></div></div>}
     </div>
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 // ROOT APP
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────
 function AdminTeams({ bp, showToast, teams, setTeams, api }) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ name:"", slug:"", color:"#6366f1" });
@@ -1074,8 +1074,8 @@ function AdminTeams({ bp, showToast, teams, setTeams, api }) {
 
   const save = async () => {
     const e = {};
-    if (!form.name.trim()) e.name = "Nome obrigatÃ³rio";
-    if (!form.slug.trim()) e.slug = "Slug obrigatÃ³rio";
+    if (!form.name.trim()) e.name = "Nome obrigatório";
+    if (!form.slug.trim()) e.slug = "Slug obrigatório";
     if (Object.keys(e).length) { setErrors(e); return; }
     try {
       const created = await api.createTeam(form);
@@ -1117,7 +1117,7 @@ function AdminTeams({ bp, showToast, teams, setTeams, api }) {
           <div onClick={e => e.stopPropagation()} style={{ background:"#fff", borderRadius:14, width:"100%", maxWidth:440, boxShadow:"0 24px 80px rgba(0,0,0,0.2)", overflow:"hidden" }}>
             <div style={{ padding:"18px 20px", borderBottom:"1px solid #f1f5f9", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <h3 style={{ fontSize:16, fontWeight:600, fontFamily:"'Outfit',sans-serif" }}>Nova Equipe</h3>
-              <button onClick={() => setModal(false)} style={{ background:"#f1f5f9", border:"none", borderRadius:"50%", width:32, height:32, cursor:"pointer", fontSize:16 }}>Ã—</button>
+              <button onClick={() => setModal(false)} style={{ background:"#f1f5f9", border:"none", borderRadius:"50%", width:32, height:32, cursor:"pointer", fontSize:16 }}>×</button>
             </div>
             <div style={{ padding:20, display:"flex", flexDirection:"column", gap:14 }}>
               <div>
@@ -1157,7 +1157,7 @@ function AdminTypes({ bp, showToast, requestTypes, setRequestTypes, teams, api }
 
   const save = async () => {
     const e = {};
-    if (!form.name.trim()) e.name = "Nome obrigatÃ³rio";
+    if (!form.name.trim()) e.name = "Nome obrigatório";
     if (!form.team_id) e.team_id = "Selecione uma equipe";
     if (Object.keys(e).length) { setErrors(e); return; }
     try {
@@ -1176,7 +1176,7 @@ function AdminTypes({ bp, showToast, requestTypes, setRequestTypes, teams, api }
     <div style={{ paddingBottom: bp.isMobile ? 80 : 0 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
         <div>
-          <h2 style={{ fontSize:16, fontWeight:600, fontFamily:"'Outfit',sans-serif" }}>Tipos de SolicitaÃ§Ã£o</h2>
+          <h2 style={{ fontSize:16, fontWeight:600, fontFamily:"'Outfit',sans-serif" }}>Tipos de Solicitação</h2>
           <p style={{ fontSize:12, color:"#94a3b8", marginTop:2, fontFamily:"'DM Sans',sans-serif" }}>
             {requestTypes.length} tipo{requestTypes.length !== 1 ? "s" : ""} cadastrado{requestTypes.length !== 1 ? "s" : ""}
           </p>
@@ -1187,7 +1187,7 @@ function AdminTypes({ bp, showToast, requestTypes, setRequestTypes, teams, api }
         <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
           <thead>
             <tr style={{ background:"#f8fafc", borderBottom:"1px solid #e2e8f0" }}>
-              {["Nome","Equipe","DescriÃ§Ã£o","Status"].map(h => <th key={h} style={{ padding:"12px 16px", textAlign:"left", fontWeight:600, color:"#374151", fontSize:12, fontFamily:"'Outfit',sans-serif" }}>{h}</th>)}
+              {["Nome","Equipe","Descrição","Status"].map(h => <th key={h} style={{ padding:"12px 16px", textAlign:"left", fontWeight:600, color:"#374151", fontSize:12, fontFamily:"'Outfit',sans-serif" }}>{h}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -1197,7 +1197,7 @@ function AdminTypes({ bp, showToast, requestTypes, setRequestTypes, teams, api }
                 <tr key={t.id} style={{ borderBottom:"1px solid #f1f5f9" }}>
                   <td style={{ padding:"12px 16px", fontWeight:500, fontFamily:"'DM Sans',sans-serif" }}>{t.name}</td>
                   <td style={{ padding:"12px 16px" }}>{team && <span style={{ padding:"2px 8px", borderRadius:6, background:team.color+"20", color:team.color, fontWeight:600, fontSize:12 }}>{team.name}</span>}</td>
-                  <td style={{ padding:"12px 16px", color:"#64748b", fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>{t.description || "â€”"}</td>
+                  <td style={{ padding:"12px 16px", color:"#64748b", fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>{t.description || "—"}</td>
                   <td style={{ padding:"12px 16px" }}><span style={{ padding:"2px 8px", borderRadius:6, background:"#f0fdf4", color:"#16a34a", fontWeight:600, fontSize:12 }}>Ativo</span></td>
                 </tr>
               );
@@ -1210,12 +1210,12 @@ function AdminTypes({ bp, showToast, requestTypes, setRequestTypes, teams, api }
           <div onClick={e => e.stopPropagation()} style={{ background:"#fff", borderRadius:14, width:"100%", maxWidth:440, boxShadow:"0 24px 80px rgba(0,0,0,0.2)", overflow:"hidden" }}>
             <div style={{ padding:"18px 20px", borderBottom:"1px solid #f1f5f9", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <h3 style={{ fontSize:16, fontWeight:600, fontFamily:"'Outfit',sans-serif" }}>Novo Tipo</h3>
-              <button onClick={() => setModal(false)} style={{ background:"#f1f5f9", border:"none", borderRadius:"50%", width:32, height:32, cursor:"pointer", fontSize:16 }}>Ã—</button>
+              <button onClick={() => setModal(false)} style={{ background:"#f1f5f9", border:"none", borderRadius:"50%", width:32, height:32, cursor:"pointer", fontSize:16 }}>×</button>
             </div>
             <div style={{ padding:20, display:"flex", flexDirection:"column", gap:14 }}>
               <div>
                 <label style={{ display:"block", fontSize:12, fontWeight:600, color:"#374151", marginBottom:6, fontFamily:"'DM Sans',sans-serif" }}>Nome *</label>
-                <input value={form.name} onChange={e => { setForm(f=>({...f,name:e.target.value})); setErrors(err=>({...err,name:undefined})); }} placeholder="Ex: Novo RelatÃ³rio" style={{ width:"100%", padding:"10px 12px", borderRadius:8, border:`1px solid ${errors.name?"#fca5a5":"#e2e8f0"}`, fontSize:14, outline:"none", fontFamily:"'DM Sans',sans-serif" }} />
+                <input value={form.name} onChange={e => { setForm(f=>({...f,name:e.target.value})); setErrors(err=>({...err,name:undefined})); }} placeholder="Ex: Novo Relatório" style={{ width:"100%", padding:"10px 12px", borderRadius:8, border:`1px solid ${errors.name?"#fca5a5":"#e2e8f0"}`, fontSize:14, outline:"none", fontFamily:"'DM Sans',sans-serif" }} />
                 {errors.name && <span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block" }}>{errors.name}</span>}
               </div>
               <div>
@@ -1227,7 +1227,7 @@ function AdminTypes({ bp, showToast, requestTypes, setRequestTypes, teams, api }
                 {errors.team_id && <span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block" }}>{errors.team_id}</span>}
               </div>
               <div>
-                <label style={{ display:"block", fontSize:12, fontWeight:600, color:"#374151", marginBottom:6, fontFamily:"'DM Sans',sans-serif" }}>DescriÃ§Ã£o (opcional)</label>
+                <label style={{ display:"block", fontSize:12, fontWeight:600, color:"#374151", marginBottom:6, fontFamily:"'DM Sans',sans-serif" }}>Descrição (opcional)</label>
                 <textarea value={form.description} onChange={e => setForm(f=>({...f,description:e.target.value}))} placeholder="Descreva brevemente este tipo..." rows={3} style={{ width:"100%", padding:"10px 12px", borderRadius:8, border:"1px solid #e2e8f0", fontSize:14, outline:"none", resize:"vertical", fontFamily:"'DM Sans',sans-serif" }} />
               </div>
             </div>
@@ -1679,7 +1679,7 @@ function DemoSwitcher({ currentUser, setCurrentUser, setView, bp }) {
   return (
     <div style={{ position:"fixed", bottom:bp.isMobile?72:20, right:12, zIndex:9000 }}>
       {open&&<div style={{ position:"absolute", bottom:"calc(100% + 8px)", right:0, background:"#0a1220", borderRadius:12, padding:"12px", boxShadow:"0 8px 32px rgba(0,0,0,0.3)", border:"1px solid rgba(255,255,255,0.08)", minWidth:180 }}>
-        <div style={{ fontSize:10, fontWeight:700, color:"#334155", marginBottom:8, textTransform:"uppercase", letterSpacing:1, fontFamily:"'Outfit',sans-serif" }}>Demo â€” Trocar usuÃ¡rio</div>
+        <div style={{ fontSize:10, fontWeight:700, color:"#334155", marginBottom:8, textTransform:"uppercase", letterSpacing:1, fontFamily:"'Outfit',sans-serif" }}>Demo — Trocar usuário</div>
         {USERS.map(u=><button key={u.id} onClick={()=>{setCurrentUser(u);setView(u.role==="solicitante"?"my-requests":"dashboard");setOpen(false);}} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px", borderRadius:8, border:"none", background:currentUser.id===u.id?"rgba(59,110,168,0.2)":"transparent", cursor:"pointer", width:"100%", textAlign:"left" }}><Avatar user={u} size={22} /><div><div style={{ fontSize:12, fontWeight:600, color:currentUser.id===u.id?"#7eb3e8":"#e2e8f0", fontFamily:"'DM Sans',sans-serif" }}>{u.full_name.split(" ")[0]}</div><div style={{ fontSize:10, color:"#475569", textTransform:"capitalize", fontFamily:"'DM Sans',sans-serif" }}>{u.role.replace(/_/g," ")}</div></div></button>)}
       </div>}
       <button onClick={()=>setOpen(v=>!v)} style={{ width:40, height:40, borderRadius:"50%", background:"#0a1220", border:"2px solid rgba(255,255,255,0.1)", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 16px rgba(0,0,0,0.3)" }}>
