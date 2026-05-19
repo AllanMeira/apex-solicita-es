@@ -26,8 +26,17 @@ export async function signOut() {
   return unwrap(await supabase.auth.signOut());
 }
 
-export async function getProfile(id) {
-  return unwrap(await supabase.from("profiles").select("*").eq("id", id).maybeSingle());
+export async function getProfile(userId) {
+  try {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*, team:teams(id,name,color,slug)")
+      .eq("id", userId)
+      .single();
+    return data;
+  } catch {
+    return null;
+  }
 }
 
 export async function getProfiles() {

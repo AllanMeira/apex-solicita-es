@@ -1260,45 +1260,76 @@ export default function ApexSolicitacoes() {
 
   // Verificar sessão ao carregar
   useEffect(() => {
-    api.getSession().then(async session => {
-      if (session) {
-        const profile = await api.getProfile(session.user.id);
-        if (profile && profile.is_active) {
-          setCurrentUser(profile);
-          setLoggedIn(true);
-          await loadAllData();
-        } else {
-          await api.signOut();
+    api.getSession()
+      .then(async session => {
+        try {
+          if (session) {
+            const profile = await api.getProfile(session.user.id);
+            if (profile && profile.is_active) {
+              setCurrentUser(profile);
+              setLoggedIn(true);
+              await loadAllData();
+            } else {
+              await api.signOut();
+            }
+          }
+        } catch (err) {
+          console.error("Erro ao verificar sessão:", err);
+          setLoggedIn(false);
+          setCurrentUser(null);
+        } finally {
+          setAuthLoading(false);
         }
-      }
-      setAuthLoading(false);
-    });
+      })
+      .catch(err => {
+        console.error("Erro ao buscar sessão:", err);
+        setLoggedIn(false);
+        setCurrentUser(null);
+        setAuthLoading(false);
+      });
 
     // Listener de mudança de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          const profile = await api.getProfile(session.user.id);
-          if (profile && profile.is_active) {
-            setCurrentUser(profile);
-            setLoggedIn(true);
-            await loadAllData();
-          } else {
-            await api.signOut();
-            showToast('Acesso negado. Usuário não cadastrado ou inativo.', 'error');
+        try {
+          if (event === 'SIGNED_IN' && session) {
+            const profile = await api.getProfile(session.user.id);
+            if (profile && profile.is_active) {
+              setCurrentUser(profile);
+              setLoggedIn(true);
+              await loadAllData();
+            } else {
+              await api.signOut();
+              showToast('Acesso negado. Usuário não cadastrado ou inativo.', 'error');
+            }
           }
-          setAuthLoading(false);
-        }
-        if (event === 'SIGNED_OUT') {
+          if (event === 'SIGNED_OUT') {
+            setLoggedIn(false);
+            setCurrentUser(null);
+            setRequests([]);
+            setUsers([]);
+          }
+        } catch (err) {
+          console.error("Erro em mudança de autenticação:", err);
           setLoggedIn(false);
           setCurrentUser(null);
-          setRequests([]);
-          setUsers([]);
+        } finally {
+          setAuthLoading(false);
         }
       }
     );
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!authLoading) return undefined;
+    const timeout = setTimeout(() => {
+      setLoggedIn(false);
+      setCurrentUser(null);
+      setAuthLoading(false);
+    }, 10000);
+    return () => clearTimeout(timeout);
+  }, [authLoading]);
 
   useEffect(() => {
     if (bp.isMobile || bp.isTablet) setSidebarOpen(false);
@@ -1433,7 +1464,7 @@ export default function ApexSolicitacoes() {
         <ApexLogoMark size={48} />
         <div style={{
           color: "#4a7ab8", fontSize: 13,
-          fontFamily: "'DM Sans', sans-serif",
+          fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
           letterSpacing: "0.1em"
         }}>Carregando...</div>
       </div>
