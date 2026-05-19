@@ -1415,7 +1415,17 @@ export default function ApexSolicitacoes() {
 
   const handleLogin = async (email, password) => {
     try {
-      await api.signInWithEmail(email, password);
+      const { session } = await api.signInWithEmail(email, password);
+      if (session) {
+        const profile = await api.getProfile(session.user.id);
+        if (profile && profile.is_active) {
+          setCurrentUser(profile);
+          setLoggedIn(true);
+          await loadAllData();
+        } else {
+          throw new Error('Acesso negado.');
+        }
+      }
     } catch (err) {
       throw err;
     }

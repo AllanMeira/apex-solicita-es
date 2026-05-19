@@ -12,7 +12,12 @@ export async function getSession() {
 }
 
 export async function signInWithEmail(email, password) {
-  return unwrap(await supabase.auth.signInWithPassword({ email, password }));
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (error) throw error;
+  return data;
 }
 
 export async function signInWithGoogle() {
