@@ -3,11 +3,6 @@ import { supabase } from "./lib/supabase";
 import * as api from "./lib/api";
 
 // ─────────────────────────────────────────────
-// FONTS — Outfit + DM Sans via Google Fonts
-// ─────────────────────────────────────────────
-const FONT_LINK = "https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap";
-
-// ─────────────────────────────────────────────
 // LOGO SVG — montanha low-poly Apex
 // ─────────────────────────────────────────────
 function ApexLogoMark({ size = 32 }) {
@@ -646,7 +641,8 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
       setNc({ content: "", visibility: "publico" });
       showToast("Comentário adicionado.");
     } catch (err) {
-      showToast("Erro ao adicionar comentário.", "error");
+      console.error("addComment error:", err);
+      showToast("Erro: " + (err?.message || JSON.stringify(err)), "error");
     }
   };
   const addFile = async (e) => {
@@ -1485,7 +1481,7 @@ export default function ApexSolicitacoes() {
       setLoggedIn(false);
       setCurrentUser(null);
       setAuthLoading(false);
-    }, 10000);
+    }, 5000);
     return () => clearTimeout(timeout);
   }, [authLoading]);
 
@@ -1593,13 +1589,7 @@ export default function ApexSolicitacoes() {
       const data = await api.signInWithEmail(email, password);
       if (!data?.session) throw new Error('Login falhou');
 
-      let profile = null;
-      for (let i = 0; i < 3; i++) {
-        await new Promise(r => setTimeout(r, 500 * (i + 1)));
-        profile = await api.getProfile(data.session.user.id);
-        if (profile) break;
-        console.warn(`Tentativa ${i + 1} de getProfile falhou`);
-      }
+      const profile = await api.getProfile(data.session.user.id);
 
       if (!profile) {
         throw new Error('Perfil não encontrado. Contate o administrador.');
@@ -1610,7 +1600,7 @@ export default function ApexSolicitacoes() {
 
       setCurrentUser(profile);
       setLoggedIn(true);
-      await loadAllData();
+      loadAllData();
     } catch (err) {
       throw err;
     }
@@ -1670,7 +1660,6 @@ export default function ApexSolicitacoes() {
     return (
       <>
         <style>{`
-          @import url('${FONT_LINK}');
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body { font-family: 'DM Sans', sans-serif; }
         `}</style>
@@ -1683,7 +1672,6 @@ export default function ApexSolicitacoes() {
   }
 
   const globalStyle = `
-    @import url('${FONT_LINK}');
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100%;overflow:hidden}
     body{font-family:'DM Sans',system-ui,sans-serif;background:#f8fafc;-webkit-font-smoothing:antialiased}

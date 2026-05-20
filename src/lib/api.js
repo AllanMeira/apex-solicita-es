@@ -141,14 +141,23 @@ export async function getAuditLogs() {
 
 export async function getComments(requestId) {
   return unwrap(await supabase
-    .from("comments")
-    .select("*, author:profiles(*)")
+    .from("request_comments")
+    .select("*, author:profiles(id,full_name,avatar_url)")
     .eq("request_id", requestId)
     .order("created_at", { ascending: true }));
 }
 
 export async function createComment(comment) {
-  return unwrap(await supabase.from("comments").insert(comment).select().single());
+  const { data, error } = await supabase
+    .from("request_comments")
+    .insert(comment)
+    .select("*, author:profiles(id,full_name,avatar_url)")
+    .single();
+  if (error) {
+    console.error("createComment error:", error);
+    throw error;
+  }
+  return data;
 }
 
 export async function getAttachments(requestId) {
