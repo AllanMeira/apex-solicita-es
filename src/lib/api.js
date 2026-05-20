@@ -99,7 +99,17 @@ export async function createRequest(request) {
 }
 
 export async function updateRequest(id, patch) {
-  return unwrap(await supabase.from("requests").update(patch).eq("id", id).select().single());
+  const { data, error } = await supabase
+    .from("requests")
+    .update(patch)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) {
+    console.error("updateRequest error:", error);
+    throw error;
+  }
+  return data;
 }
 
 export async function createAuditLog({
@@ -162,26 +172,42 @@ export async function createComment(comment) {
 
 export async function getAttachments(requestId) {
   return unwrap(await supabase
-    .from("attachments")
+    .from("request_attachments")
     .select("*")
     .eq("request_id", requestId)
     .order("created_at", { ascending: true }));
 }
 
 export async function uploadAttachment(requestId, uploaderId, file) {
-  const path = `${requestId}/${Date.now()}-${file.name}`;
-  unwrap(await supabase.storage.from("attachments").upload(path, file));
-  return unwrap(await supabase
-    .from("attachments")
+  const path = `${requestId}/${Date.now()}_${file.name}`;
+
+  const { error: upErr } = await supabase.storage
+    .from("request-attachments")
+    .upload(path, file);
+
+  if (upErr) {
+    console.error("Storage upload error:", upErr);
+    throw upErr;
+  }
+
+  const { data, error } = await supabase
+    .from("request_attachments")
     .insert({
       request_id: requestId,
       uploader_id: uploaderId,
       file_name: file.name,
-      file_size: file.size,
       file_path: path,
+      file_size: file.size,
+      mime_type: file.type,
     })
     .select()
-    .single());
+    .single();
+
+  if (error) {
+    console.error("Attachment insert error:", error);
+    throw error;
+  }
+  return data;
 }
 
 export async function getHistory(requestId) {

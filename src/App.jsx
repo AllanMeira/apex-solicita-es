@@ -176,6 +176,26 @@ const Field = ({ label, children }) => (
     {children}
   </div>
 );
+const VisibilityToggle = ({ value, onChange }) => (
+  <div style={{ display:"flex", gap:6 }}>
+    {["publico","interno"].map(v => (
+      <button key={v}
+        type="button"
+        onClick={() => onChange(v)}
+        style={{
+          padding:"8px 16px", borderRadius:8,
+          border:`1.5px solid ${value===v?"#1e3d6e":"#e2e8f0"}`,
+          background: value===v ? "#eff6ff" : "#fff",
+          color: value===v ? "#1e3d6e" : "#64748b",
+          cursor:"pointer", fontSize:13,
+          fontWeight: value===v ? 600 : 400,
+          fontFamily:"'DM Sans',sans-serif",
+        }}>
+        {v==="publico" ? "Público" : "Interno"}
+      </button>
+    ))}
+  </div>
+);
 
 // ─────────────────────────────────────────────
 // AVATAR com foto
@@ -184,10 +204,11 @@ function Avatar({ user, size=32 }) {
   const colors = ["#6366f1","#0ea5e9","#10b981","#f59e0b","#ef4444","#8b5cf6","#ec4899"];
   const color = colors[(user?.full_name?.charCodeAt(0)||0)%colors.length];
   const initials = user?.full_name?.split(" ").slice(0,2).map(n=>n[0]).join("")||"?";
-  if (user?.avatar) {
+  const avatarUrl = user?.avatar || user?.avatar_url;
+  if (avatarUrl) {
     return (
       <img
-        src={user.avatar}
+        src={avatarUrl}
         alt={user?.full_name || ""}
         style={{
           width: size,
@@ -453,7 +474,8 @@ function Topbar({ currentUser, view, setSidebarOpen, bp, onLogout }) {
 // REQUEST CARD
 // ─────────────────────────────────────────────
 function RequestCard({ r, onClick }) {
-  const s=gs(r.status), p=gp(r.priority), t=gt(r.team_id), a=gu(r.assignee_id);
+  const assigneeData = r._assignee || gu(r.assignee_id);
+  const s=gs(r.status), p=gp(r.priority), t=r.team || gt(r.team_id), a=assigneeData;
   const waiting = r.status==="aguardando_solicitante";
   return (
     <div onClick={onClick} style={{ background:"#fff", borderRadius:12, border:waiting?"1.5px solid #fbbf24":"1px solid #e2e8f0", padding:"14px 16px", cursor:"pointer", borderLeft:`4px solid ${t?.color||"#e2e8f0"}`, transition:"all 0.15s" }}
@@ -493,7 +515,7 @@ function Timeline({ request, currentRole }) {
     return {created:{icon:"checkCircle",color:"#16a34a",bg:"#f0fdf4",border:"#bbf7d0"},status_changed:{icon:"trendingUp",color:"#2563eb",bg:"#eff6ff",border:"#bfdbfe"},priority_changed:{icon:"alertCircle",color:"#dc2626",bg:"#fef2f2",border:"#fecaca"},assignee_changed:{icon:"user",color:"#7c3aed",bg:"#f5f3ff",border:"#ddd6fe"}}[e.action]||{icon:"clock",color:"#64748b",bg:"#f8fafc",border:"#e2e8f0"};
   };
   const txt = e => {
-    const actor=gu(e.actor_id||e.author_id); const name=actor?.full_name||"Sistema";
+    const actor=e.actor || e.author || gu(e.actor_id||e.author_id); const name=actor?.full_name||"Sistema";
     if(e._type==="comment") return {title:name+" comentou",body:e.content};
     return {created:{title:"Solicitação criada por "+name},status_changed:{title:name+" alterou o status",body:(gs(e.old_value)?.label||e.old_value||"—")+" → "+(gs(e.new_value)?.label||e.new_value)},priority_changed:{title:name+" alterou a prioridade",body:(e.old_value||"—")+" → "+(e.new_value||"—")},assignee_changed:{title:name+" alterou o responsável",body:(e.old_value||"Ninguém")+" → "+(e.new_value||"Ninguém")}}[e.action]||{title:e.action};
   };
@@ -611,7 +633,7 @@ function MyRequestsView({ requests, currentUser, openRequest, setView, bp }) {
 // ─────────────────────────────────────────────
 // DETAIL VIEW
 // ─────────────────────────────────────────────
-function DetailView({ request, currentUser, updateRequest, setView, showToast, setRequests, bp, detailFrom, api }) {
+function DetailView({ request, currentUser, updateRequest, setView, showToast, setRequests, bp, detailFrom, users = [], api }) {
   const [tab, setTab] = useState("timeline");
   const [nc, setNc] = useState({ content:"", visibility:"publico" });
   const fileRef = useRef();
@@ -619,8 +641,10 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
   const canEdit = ["admin","gestor","supervisor","membro_equipe"].includes(currentUser.role);
   const canSeeInternalComments = ["admin","gestor","supervisor","membro_equipe"].includes(currentUser.role);
   const visibleComments = (request.comments || []).filter(c => c.visibility === "publico" || canSeeInternalComments);
-  const s=gs(request.status), p=gp(request.priority), team=gt(request.team_id), assignee=gu(request.assignee_id), type=gtype(request.type_id);
-  const teamMembers = USERS.filter(u=>u.team_id===request.team_id&&u.role==="membro_equipe");
+  const requester = request._requester || gu(request.requester_id);
+  const assignee = request._assignee || gu(request.assignee_id);
+  const s=gs(request.status), p=gp(request.priority), team=request.team || gt(request.team_id), type=request.type || gtype(request.type_id);
+  const teamMembers = (users?.length ? users : USERS).filter(u=>u.team_id===request.team_id&&u.role==="membro_equipe");
   const backView = isSolicitante?"my-requests":(detailFrom||"requests");
 
   const openWA = () => { if(!assignee?.whatsapp){showToast("Responsável sem WhatsApp cadastrado.","error");return;} const msg=encodeURIComponent(`Olá ${assignee.full_name.split(" ")[0]}! Atualização sobre a solicitação *${request.protocol}* — *${request.title}*?`); window.open(`https://wa.me/${assignee.whatsapp}?text=${msg}`,"_blank"); };
@@ -642,13 +666,14 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
       showToast("Comentário adicionado.");
     } catch (err) {
       console.error("addComment error:", err);
-      showToast("Erro: " + (err?.message || JSON.stringify(err)), "error");
+      showToast("Erro ao adicionar comentário: " + (err?.message || JSON.stringify(err)), "error");
     }
   };
   const addFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     try {
+      showToast("Enviando arquivo...");
       const att = await api.uploadAttachment(request.id, currentUser.id, file);
       setRequests(prev => prev.map(r =>
         r.id === request.id
@@ -657,7 +682,8 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
       ));
       showToast("Arquivo anexado: " + file.name);
     } catch (err) {
-      showToast("Erro ao anexar arquivo.", "error");
+      console.error("addFile error:", err);
+      showToast("Erro ao anexar: " + (err?.message || JSON.stringify(err)), "error");
     }
     e.target.value = "";
   };  const tabs = isSolicitante?[["timeline","Acompanhamento"],["attachments","Anexos"]]:[["timeline","Timeline"],["comments","Comentários"],["attachments","Anexos"]];
@@ -692,7 +718,7 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
                 <div style={{ borderTop:"1px solid #f1f5f9", paddingTop:16, marginTop:12 }}>
                   <textarea value={nc.content} onChange={e=>setNc(c=>({...c,content:e.target.value}))} placeholder={isSolicitante?"Responda ou adicione informações...":"Escreva um comentário..."} rows={3} style={{ ...inp, resize:"vertical", marginBottom:10 }} />
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                    {canEdit&&<select value={nc.visibility} onChange={e=>setNc(c=>({...c,visibility:e.target.value}))} style={{ ...inp, width:"auto" }}><option value="publico">Público</option><option value="interno">Interno</option></select>}
+                    {canEdit&&<VisibilityToggle value={nc.visibility} onChange={visibility=>setNc(c=>({...c,visibility}))} />}
                     <div style={{ flex:1 }} />
                     <button onClick={addComment} style={{ padding:"9px 20px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", gap:6, fontFamily:"'DM Sans',sans-serif" }}><Icon name="send" size={14} color="#fff" /> Enviar</button>
                   </div>
@@ -700,13 +726,13 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
               </div>}
               {tab==="comments"&&!isSolicitante&&<div>
                 <div style={{ display:"flex", flexDirection:"column", gap:12, marginBottom:18 }}>
-                  {visibleComments.map(c=>{ const author=gu(c.author_id); return (<div key={c.id} style={{ display:"flex", gap:10 }}><Avatar user={author} size={30} /><div style={{ flex:1 }}><div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap" }}><span style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{author?.full_name}</span>{c.visibility==="interno"&&<span style={{ fontSize:11, background:"#fef3c7", color:"#92400e", padding:"1px 6px", borderRadius:4, fontWeight:600 }}>Interno</span>}<span style={{ fontSize:11, color:"#94a3b8" }}>{fdt(c.created_at)}</span></div><div style={{ fontSize:13, color:"#374151", background:"#f8fafc", borderRadius:8, padding:"10px 12px", lineHeight:1.6, fontFamily:"'DM Sans',sans-serif" }}>{c.content}</div></div></div>); })}
+                  {visibleComments.map(c=>{ const author=c.author || gu(c.author_id); return (<div key={c.id} style={{ display:"flex", gap:10 }}><Avatar user={author} size={30} /><div style={{ flex:1 }}><div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap" }}><span style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{author?.full_name}</span>{c.visibility==="interno"&&<span style={{ fontSize:11, background:"#fef3c7", color:"#92400e", padding:"1px 6px", borderRadius:4, fontWeight:600 }}>Interno</span>}<span style={{ fontSize:11, color:"#94a3b8" }}>{fdt(c.created_at)}</span></div><div style={{ fontSize:13, color:"#374151", background:"#f8fafc", borderRadius:8, padding:"10px 12px", lineHeight:1.6, fontFamily:"'DM Sans',sans-serif" }}>{c.content}</div></div></div>); })}
                   {!visibleComments.length&&<div style={{ color:"#94a3b8", fontSize:13, textAlign:"center", padding:"20px 0", fontFamily:"'DM Sans',sans-serif" }}>Nenhum comentário ainda.</div>}
                 </div>
                 <div style={{ borderTop:"1px solid #f1f5f9", paddingTop:16 }}>
                   <textarea value={nc.content} onChange={e=>setNc(c=>({...c,content:e.target.value}))} rows={3} style={{ ...inp, resize:"vertical", marginBottom:10 }} placeholder="Escreva um comentário..." />
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                    <select value={nc.visibility} onChange={e=>setNc(c=>({...c,visibility:e.target.value}))} style={{ ...inp, width:"auto" }}><option value="publico">Público</option><option value="interno">Interno</option></select>
+                    <VisibilityToggle value={nc.visibility} onChange={visibility=>setNc(c=>({...c,visibility}))} />
                     <div style={{ flex:1 }} /><button onClick={addComment} style={{ padding:"9px 20px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>Enviar</button>
                   </div>
                 </div>
@@ -727,7 +753,7 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
           <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"16px 18px" }}>
             <div style={{ fontWeight:600, fontSize:13, marginBottom:14, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>Detalhes</div>
             <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-              {[{ label:"Solicitante", content:<div style={{ display:"flex", alignItems:"center", gap:8 }}><Avatar user={gu(request.requester_id)} size={22} /><span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{gu(request.requester_id)?.full_name}</span></div> },{ label:"Responsável", content:assignee?<div style={{ display:"flex", alignItems:"center", gap:8 }}><Avatar user={assignee} size={22} /><span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{assignee.full_name}</span></div>:<span style={{ color:"#94a3b8", fontSize:13 }}>Não atribuído</span> },...(request.client_name?[{ label:"Cliente / Área", content:<span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{request.client_name}</span> }]:[]),{ label:"Última atualização", content:<span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{fdt(request.updated_at)}</span> },{ label:"Aberto em", content:<span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{fd(request.created_at)}</span> }].map(row=>(
+              {[{ label:"Solicitante", content:<div style={{ display:"flex", alignItems:"center", gap:8 }}><Avatar user={requester} size={22} /><span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{requester?.full_name}</span></div> },{ label:"Responsável", content:assignee?<div style={{ display:"flex", alignItems:"center", gap:8 }}><Avatar user={assignee} size={22} /><span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{assignee.full_name}</span></div>:<span style={{ color:"#94a3b8", fontSize:13 }}>Não atribuído</span> },...(request.client_name?[{ label:"Cliente / Área", content:<span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{request.client_name}</span> }]:[]),{ label:"Última atualização", content:<span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{fdt(request.updated_at)}</span> },{ label:"Aberto em", content:<span style={{ fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{fd(request.created_at)}</span> }].map(row=>(
                 <div key={row.label}><div style={{ fontSize:11, fontWeight:600, color:"#94a3b8", textTransform:"uppercase", letterSpacing:0.5, marginBottom:4, fontFamily:"'Outfit',sans-serif" }}>{row.label}</div>{row.content}</div>
               ))}
             </div>
@@ -1312,12 +1338,27 @@ function AdminTypes({ bp, showToast, requestTypes, setRequestTypes, teams, api, 
 function AuditoriaView({ bp, api }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
     api.getAuditLogs()
-      .then(data => setLogs(data || []))
-      .catch(err => console.error(err))
-      .finally(() => setLoading(false));
+      .then(data => {
+        if (!cancelled) {
+          setLogs(data || []);
+          setError(null);
+        }
+      })
+      .catch(err => {
+        if (!cancelled) {
+          console.error("getAuditLogs error:", err);
+          setError(err?.message || "Erro ao carregar");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const actionLabels = {
@@ -1343,6 +1384,22 @@ function AuditoriaView({ bp, api }) {
       {loading ? (
         <div style={{ textAlign: "center", padding: 40, color: "#94a3b8" }}>
           Carregando...
+        </div>
+      ) : error ? (
+        <div style={{ textAlign: "center", padding: 40, color: "#ef4444", fontFamily: "'DM Sans', sans-serif" }}>
+          {error}
+        </div>
+      ) : logs.length === 0 ? (
+        <div style={{ textAlign:"center", padding:60 }}>
+          <div style={{ fontSize:40, marginBottom:12 }}>📋</div>
+          <div style={{ fontWeight:600, fontSize:15, color:"#374151",
+                        fontFamily:"'Outfit',sans-serif" }}>
+            Nenhuma ação registrada ainda
+          </div>
+          <div style={{ fontSize:13, color:"#94a3b8", marginTop:6,
+                        fontFamily:"'DM Sans',sans-serif" }}>
+            As ações dos supervisores aparecerão aqui.
+          </div>
         </div>
       ) : (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "auto" }}>
@@ -1442,14 +1499,27 @@ export default function ApexSolicitacoes() {
     // Listener de mudança de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth event:', event, 'Session:', !!session);
+        console.log("Auth event:", event);
+        if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+          setLoggedIn(false);
+          setCurrentUser(null);
+          setRequests([]);
+          setUsers([]);
+          setAuthLoading(false);
+          return;
+        }
+
+        if (event === 'TOKEN_REFRESHED') {
+          return;
+        }
+
         try {
-          if (event === 'SIGNED_IN' && session) {
+          if (event === 'SIGNED_IN' && session && !loggedIn) {
             const profile = await api.getProfile(session.user.id);
             if (profile && profile.is_active) {
               setCurrentUser(profile);
               setLoggedIn(true);
-              await loadAllData();
+              loadAllData();
             } else if (profile && !profile.is_active) {
               await api.signOut();
               showToast('Acesso negado. Usuário não cadastrado ou inativo.', 'error');
@@ -1506,6 +1576,8 @@ export default function ApexSolicitacoes() {
         type_id: r.type?.id || r.type_id,
         requester_id: r.requester?.id || r.requester_id,
         assignee_id: r.assignee?.id || r.assignee_id,
+        _requester: r.requester || null,
+        _assignee: r.assignee || null,
         comments: [],
         attachments: [],
         history: [],
@@ -1576,7 +1648,14 @@ export default function ApexSolicitacoes() {
         });
       }
       setRequests(prev => prev.map(r =>
-        r.id === id ? { ...r, ...patch, updated_at: new Date().toISOString() } : r
+        r.id === id ? {
+          ...r,
+          ...patch,
+          _assignee: Object.prototype.hasOwnProperty.call(patch, "assignee_id")
+            ? ((users?.length ? users : USERS).find(u => u.id === patch.assignee_id) || null)
+            : r._assignee,
+          updated_at: new Date().toISOString()
+        } : r
       ));
       showToast('Solicitação atualizada.');
     } catch (err) {
@@ -1829,7 +1908,7 @@ export default function ApexSolicitacoes() {
             {toast.msg}
           </div>
         )}
-        {import.meta.env.DEV && (
+        {import.meta.env.VITE_SHOW_DEMO === 'true' && (
           <DemoSwitcher
             currentUser={currentUser}
             setCurrentUser={setCurrentUser}
