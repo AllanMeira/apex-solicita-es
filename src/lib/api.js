@@ -102,6 +102,43 @@ export async function updateRequest(id, patch) {
   return unwrap(await supabase.from("requests").update(patch).eq("id", id).select().single());
 }
 
+export async function createAuditLog({
+  actorId,
+  actorName,
+  action,
+  entity,
+  entityId,
+  oldValue,
+  newValue,
+  description,
+}) {
+  try {
+    const { error } = await supabase.from("audit_logs").insert({
+      actor_id: actorId,
+      actor_name: actorName,
+      action,
+      entity,
+      entity_id: entityId,
+      old_value: oldValue ? JSON.stringify(oldValue) : null,
+      new_value: newValue ? JSON.stringify(newValue) : null,
+      description,
+    });
+    if (error) throw error;
+  } catch (err) {
+    console.error("Erro ao salvar audit log:", err);
+  }
+}
+
+export async function getAuditLogs() {
+  const { data, error } = await supabase
+    .from("audit_logs")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return data;
+}
+
 export async function getComments(requestId) {
   return unwrap(await supabase
     .from("comments")

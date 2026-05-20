@@ -147,8 +147,9 @@ const PRIORITIES = [
   { key:"critica", label:"Crítica", color:"#7c2d12" },
 ];
 const ROLES = [
-  { key:"admin", label:"Admin", desc:"Acesso total ao sistema", color:"#7c3aed", bg:"#f5f3ff" },
-  { key:"gestor", label:"Gestor", desc:"Vê tudo, reatribui e gerencia", color:"#2563eb", bg:"#eff6ff" },
+  { key:"admin",      label:"Admin",      desc:"Acesso total e exclusivo", color:"#7c3aed", bg:"#f5f3ff" },
+  { key:"supervisor", label:"Supervisor", desc:"Gestão completa exceto admins", color:"#dc2626", bg:"#fef2f2" },
+  { key:"gestor",     label:"Gestor",     desc:"Vê tudo, reatribui e gerencia", color:"#2563eb", bg:"#eff6ff" },
   { key:"membro_equipe", label:"Membro de Equipe", desc:"Atende solicitações da equipe", color:"#0891b2", bg:"#ecfeff" },
   { key:"solicitante", label:"Solicitante", desc:"Abre e acompanha solicitações", color:"#16a34a", bg:"#f0fdf4" },
 ];
@@ -168,7 +169,7 @@ const gp = k => PRIORITIES.find(p=>p.key===k)||PRIORITIES[1];
 const gt = id => TEAMS.find(t=>t.id===id);
 const gu = id => USERS.find(u=>u.id===id);
 const gtype = id => REQUEST_TYPES.find(t=>t.id===id);
-const grc = k => ROLES.find(r=>r.key===k)||ROLES[3];
+const grc = k => ROLES.find(r=>r.key===k)||ROLES[4];
 const fd = d => d?new Date(d).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit"}):"—";
 const fdt = d => d?new Date(d).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
 const fsz = b => b>1048576?(b/1048576).toFixed(1)+" MB":Math.round(b/1024)+" KB";
@@ -338,7 +339,7 @@ function LoginScreen({ onLogin, onGoogleLogin }) {
 // ─────────────────────────────────────────────
 function BottomNav({ currentUser, view, setView }) {
   const isSolicitante = currentUser.role==="solicitante";
-  const isAdmin = ["admin","gestor"].includes(currentUser.role);
+  const isAdmin = ["admin","gestor","supervisor"].includes(currentUser.role);
   const items = isSolicitante
     ? [{ key:"my-requests", icon:"ticket", label:"Minhas" }, { key:"new", icon:"plus", label:"Nova" }]
     : [{ key:"dashboard", icon:"home", label:"Início" }, { key:"requests", icon:"ticket", label:"Pedidos" }, { key:"historico", icon:"history", label:"Histórico" }, { key:"new", icon:"plus", label:"Nova" }, ...(isAdmin?[{ key:"admin-users", icon:"users", label:"Admin" }]:[]) ];
@@ -362,14 +363,19 @@ function BottomNav({ currentUser, view, setView }) {
 function Sidebar({ currentUser, view, setView, open, setOpen, bp }) {
   const [adminOpen, setAdminOpen] = useState(true);
   const isSolicitante = currentUser.role==="solicitante";
-  const isAdmin = ["admin","gestor"].includes(currentUser.role);
+  const isAdmin = ["admin","supervisor"].includes(currentUser.role);
   const collapsed = !open;
   const w = collapsed?60:220;
 
   const navItems = isSolicitante
     ? [{ key:"my-requests", label:"Minhas Solicitações", icon:"ticket" }, { key:"new", label:"Nova Solicitação", icon:"plus" }]
     : [{ key:"dashboard", label:"Dashboard", icon:"home" }, { key:"requests", label:"Solicitações", icon:"ticket" }, { key:"historico", label:"Histórico", icon:"history" }, { key:"new", label:"Nova Solicitação", icon:"plus" }];
-  const adminItems = [{ key:"admin-users", label:"Usuários", icon:"users" }, { key:"admin-teams", label:"Equipes", icon:"layers" }, { key:"admin-types", label:"Tipos", icon:"tag" }];
+  const adminItems = [
+    { key:"admin-users", label:"Usuários", icon:"users" },
+    { key:"admin-teams", label:"Equipes", icon:"layers" },
+    { key:"admin-types", label:"Tipos", icon:"tag" },
+    ...(currentUser.role === "admin" ? [{ key:"auditoria", label:"Auditoria", icon:"eye" }] : []),
+  ];
 
   const NavBtn = ({ item }) => (
     <button onClick={()=>{ setView(item.key); if(bp.isTablet) setOpen(false); }}
@@ -425,7 +431,7 @@ function Sidebar({ currentUser, view, setView, open, setOpen, bp }) {
 // TOPBAR
 // ─────────────────────────────────────────────
 function Topbar({ currentUser, view, setSidebarOpen, bp, onLogout }) {
-  const titles = { dashboard:"Dashboard", requests:"Solicitações", historico:"Histórico", new:"Nova Solicitação", detail:"Solicitação", "my-requests":"Minhas Solicitações", "admin-users":"Usuários", "admin-teams":"Equipes", "admin-types":"Tipos" };
+  const titles = { dashboard:"Dashboard", requests:"Solicitações", historico:"Histórico", new:"Nova Solicitação", detail:"Solicitação", "my-requests":"Minhas Solicitações", "admin-users":"Usuários", "admin-teams":"Equipes", "admin-types":"Tipos", auditoria:"Auditoria" };
   return (
     <div style={{ background:"#fff", borderBottom:"1px solid #e2e8f0", padding:"0 20px", height:56, display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
       {!bp.isMobile&&<button onClick={()=>setSidebarOpen(v=>!v)} style={{ background:"none", border:"none", cursor:"pointer", padding:6, borderRadius:6, color:"#64748b" }}><Icon name="menu" size={18} color="#64748b" /></button>}
@@ -484,7 +490,7 @@ function RequestCard({ r, onClick }) {
 function Timeline({ request, currentRole }) {
   const events = [];
   request.history.forEach(h=>events.push({...h,_type:"history"}));
-  request.comments.forEach(c=>{ if(c.visibility==="publico"||["admin","gestor","membro_equipe"].includes(currentRole)) events.push({...c,_type:"comment"}); });
+  request.comments.forEach(c=>{ if(c.visibility==="publico"||["admin","gestor","supervisor","membro_equipe"].includes(currentRole)) events.push({...c,_type:"comment"}); });
   events.sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
 
   const cfg = e => {
@@ -615,7 +621,9 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
   const [nc, setNc] = useState({ content:"", visibility:"publico" });
   const fileRef = useRef();
   const isSolicitante = currentUser.role==="solicitante";
-  const canEdit = ["admin","gestor","membro_equipe"].includes(currentUser.role);
+  const canEdit = ["admin","gestor","supervisor","membro_equipe"].includes(currentUser.role);
+  const canSeeInternalComments = ["admin","gestor","supervisor","membro_equipe"].includes(currentUser.role);
+  const visibleComments = (request.comments || []).filter(c => c.visibility === "publico" || canSeeInternalComments);
   const s=gs(request.status), p=gp(request.priority), team=gt(request.team_id), assignee=gu(request.assignee_id), type=gtype(request.type_id);
   const teamMembers = USERS.filter(u=>u.team_id===request.team_id&&u.role==="membro_equipe");
   const backView = isSolicitante?"my-requests":(detailFrom||"requests");
@@ -696,8 +704,8 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
               </div>}
               {tab==="comments"&&!isSolicitante&&<div>
                 <div style={{ display:"flex", flexDirection:"column", gap:12, marginBottom:18 }}>
-                  {request.comments.map(c=>{ const author=gu(c.author_id); return (<div key={c.id} style={{ display:"flex", gap:10 }}><Avatar user={author} size={30} /><div style={{ flex:1 }}><div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap" }}><span style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{author?.full_name}</span>{c.visibility==="interno"&&<span style={{ fontSize:11, background:"#fef3c7", color:"#92400e", padding:"1px 6px", borderRadius:4, fontWeight:600 }}>Interno</span>}<span style={{ fontSize:11, color:"#94a3b8" }}>{fdt(c.created_at)}</span></div><div style={{ fontSize:13, color:"#374151", background:"#f8fafc", borderRadius:8, padding:"10px 12px", lineHeight:1.6, fontFamily:"'DM Sans',sans-serif" }}>{c.content}</div></div></div>); })}
-                  {!request.comments.length&&<div style={{ color:"#94a3b8", fontSize:13, textAlign:"center", padding:"20px 0", fontFamily:"'DM Sans',sans-serif" }}>Nenhum comentário ainda.</div>}
+                  {visibleComments.map(c=>{ const author=gu(c.author_id); return (<div key={c.id} style={{ display:"flex", gap:10 }}><Avatar user={author} size={30} /><div style={{ flex:1 }}><div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4, flexWrap:"wrap" }}><span style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{author?.full_name}</span>{c.visibility==="interno"&&<span style={{ fontSize:11, background:"#fef3c7", color:"#92400e", padding:"1px 6px", borderRadius:4, fontWeight:600 }}>Interno</span>}<span style={{ fontSize:11, color:"#94a3b8" }}>{fdt(c.created_at)}</span></div><div style={{ fontSize:13, color:"#374151", background:"#f8fafc", borderRadius:8, padding:"10px 12px", lineHeight:1.6, fontFamily:"'DM Sans',sans-serif" }}>{c.content}</div></div></div>); })}
+                  {!visibleComments.length&&<div style={{ color:"#94a3b8", fontSize:13, textAlign:"center", padding:"20px 0", fontFamily:"'DM Sans',sans-serif" }}>Nenhum comentário ainda.</div>}
                 </div>
                 <div style={{ borderTop:"1px solid #f1f5f9", paddingTop:16 }}>
                   <textarea value={nc.content} onChange={e=>setNc(c=>({...c,content:e.target.value}))} rows={3} style={{ ...inp, resize:"vertical", marginBottom:10 }} placeholder="Escreva um comentário..." />
@@ -740,7 +748,7 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
 // DASHBOARD
 // ─────────────────────────────────────────────
 function Dashboard({ requests, currentUser, openRequest, bp }) {
-  const vis = ["admin","gestor"].includes(currentUser.role)?requests:requests.filter(r=>r.team_id===currentUser.team_id||r.assignee_id===currentUser.id);
+  const vis = ["admin","gestor","supervisor"].includes(currentUser.role)?requests:requests.filter(r=>r.team_id===currentUser.team_id||r.assignee_id===currentUser.id);
   const stats=[{label:"Total",v:vis.length,color:"#1e3d6e"},{label:"Novas",v:vis.filter(r=>r.status==="nova").length,color:"#d97706"},{label:"Andamento",v:vis.filter(r=>r.status==="em_andamento").length,color:"#2563eb"},{label:"Críticas",v:vis.filter(r=>r.priority==="critica"&&!["finalizada","cancelada"].includes(r.status)).length,color:"#dc2626"},{label:"Finalizadas",v:vis.filter(r=>r.status==="finalizada").length,color:"#16a34a"}];
   const recent=[...vis].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,5);
   const criticals=vis.filter(r=>r.priority==="critica"&&!["finalizada","cancelada"].includes(r.status));
@@ -953,7 +961,7 @@ function NewRequestView({ currentUser, setView, setRequests, showToast, bp, team
 // ADMIN USERS
 // ─────────────────────────────────────────────
 const EMPTY_FORM={full_name:"",email:"",role:"solicitante",team_id:"",whatsapp:"",is_active:true};
-function UserModal({ user, onSave, onClose, bp }) {
+function UserModal({ user, onSave, onClose, bp, availableRoles = ROLES }) {
   const isEdit=!!user; const [form,setForm]=useState(isEdit?{...user}:{...EMPTY_FORM}); const [errors,setErrors]=useState({});
   const needsTeam=form.role==="membro_equipe";
   const validate=()=>{ const e={}; if(!form.full_name.trim()) e.full_name="Nome obrigatório"; if(!form.email.trim()) e.email="E-mail obrigatório"; else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email="E-mail inválido"; if(needsTeam&&!form.team_id) e.team_id="Selecione a equipe"; return e; };
@@ -987,7 +995,7 @@ function UserModal({ user, onSave, onClose, bp }) {
             <Field label="E-mail *"><input value={form.email} onChange={e=>set("email",e.target.value)} placeholder="joao@alpesmidia.com" type="email" style={{ ...inp, borderColor:errors.email?"#fca5a5":"#e2e8f0" }} disabled={isEdit} />{errors.email&&<span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block" }}>{errors.email}</span>}{isEdit&&<span style={{ fontSize:11, color:"#94a3b8", marginTop:4, display:"block", fontFamily:"'DM Sans',sans-serif" }}>E-mail não pode ser alterado.</span>}</Field>
             <Field label="Perfil de acesso *">
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-                {ROLES.map(r=><button key={r.key} onClick={()=>{set("role",r.key);if(r.key!=="membro_equipe") set("team_id","");}} style={{ padding:"10px 12px", borderRadius:10, border:`2px solid ${form.role===r.key?r.color:"#e2e8f0"}`, background:form.role===r.key?r.bg:"#fff", cursor:"pointer", textAlign:"left", transition:"all 0.15s" }}><div style={{ fontWeight:600, fontSize:13, color:form.role===r.key?r.color:"#374151", marginBottom:2, fontFamily:"'DM Sans',sans-serif" }}>{r.label}</div><div style={{ fontSize:11, color:"#94a3b8", lineHeight:1.3, fontFamily:"'DM Sans',sans-serif" }}>{r.desc}</div></button>)}
+                {availableRoles.map(r=><button key={r.key} onClick={()=>{set("role",r.key);if(r.key!=="membro_equipe") set("team_id","");}} style={{ padding:"10px 12px", borderRadius:10, border:`2px solid ${form.role===r.key?r.color:"#e2e8f0"}`, background:form.role===r.key?r.bg:"#fff", cursor:"pointer", textAlign:"left", transition:"all 0.15s" }}><div style={{ fontWeight:600, fontSize:13, color:form.role===r.key?r.color:"#374151", marginBottom:2, fontFamily:"'DM Sans',sans-serif" }}>{r.label}</div><div style={{ fontSize:11, color:"#94a3b8", lineHeight:1.3, fontFamily:"'DM Sans',sans-serif" }}>{r.desc}</div></button>)}
               </div>
             </Field>
             {needsTeam&&<Field label="Equipe *"><div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>{TEAMS.map(t=><button key={t.id} onClick={()=>set("team_id",t.id)} style={{ padding:"10px 12px", borderRadius:10, border:`2px solid ${form.team_id===t.id?t.color:"#e2e8f0"}`, background:form.team_id===t.id?t.color+"15":"#fff", cursor:"pointer", display:"flex", alignItems:"center", gap:8 }}><div style={{ width:10, height:10, borderRadius:"50%", background:t.color, flexShrink:0 }} /><span style={{ fontSize:13, fontWeight:600, color:form.team_id===t.id?t.color:"#374151", fontFamily:"'DM Sans',sans-serif" }}>{t.name}</span></button>)}</div>{errors.team_id&&<span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block" }}>{errors.team_id}</span>}</Field>}
@@ -1004,12 +1012,35 @@ function UserModal({ user, onSave, onClose, bp }) {
   );
 }
 
-function AdminUsers({ bp, showToast, users, setUsers, api }) {
+function AdminUsers({ bp, showToast, users, setUsers, api, currentUser }) {
   const [modal,setModal]=useState(null); const [search,setSearch]=useState(""); const [filterRole,setFilterRole]=useState(""); const [confirmDeact,setConfirmDeact]=useState(null);
-  const filtered=useMemo(()=>{ let u=users; if(search) u=u.filter(x=>x.full_name.toLowerCase().includes(search.toLowerCase())||x.email.toLowerCase().includes(search.toLowerCase())); if(filterRole) u=u.filter(x=>x.role===filterRole); return u;},[users,search,filterRole]);
+  const visibleUsers = currentUser.role === "supervisor"
+    ? users.filter(u => u.role !== "admin")
+    : users;
+  const availableRoles = currentUser.role === "supervisor"
+    ? ROLES.filter(r => r.key !== "admin")
+    : ROLES;
+  const filtered=useMemo(()=>{ let u=visibleUsers; if(search) u=u.filter(x=>x.full_name.toLowerCase().includes(search.toLowerCase())||x.email.toLowerCase().includes(search.toLowerCase())); if(filterRole) u=u.filter(x=>x.role===filterRole); return u;},[visibleUsers,search,filterRole]);
   const saveUser = async (data) => {
     try {
+      if (currentUser.role === "supervisor" && data.role === "admin") {
+        showToast("Supervisores não podem gerenciar admins.", "error");
+        return;
+      }
+      const oldUser = users.find(u => u.id === data.id);
       await api.upsertProfile(data);
+      if (currentUser.role === "supervisor") {
+        await api.createAuditLog({
+          actorId: currentUser.id,
+          actorName: currentUser.full_name,
+          action: data.id ? "update_user" : "create_user",
+          entity: "profiles",
+          entityId: data.id || data.email,
+          oldValue: oldUser,
+          newValue: data,
+          description: `Supervisor ${data.id ? "alterou" : "criou"} usuário: ${data.full_name}`,
+        });
+      }
       const updated = await api.getProfiles();
       setUsers(updated);
       showToast(data.id ? "Usuário atualizado." : "Usuário criado!");
@@ -1020,7 +1051,23 @@ function AdminUsers({ bp, showToast, users, setUsers, api }) {
   };
   const toggleActive = async (user) => {
     try {
+      if (currentUser.role === "supervisor" && user.role === "admin") {
+        showToast("Supervisores não podem gerenciar admins.", "error");
+        return;
+      }
       await api.toggleProfileActive(user.id, !user.is_active);
+      if (currentUser.role === "supervisor") {
+        await api.createAuditLog({
+          actorId: currentUser.id,
+          actorName: currentUser.full_name,
+          action: user.is_active ? "deactivate_user" : "update_user",
+          entity: "profiles",
+          entityId: user.id,
+          oldValue: { is_active: user.is_active },
+          newValue: { is_active: !user.is_active },
+          description: `Supervisor ${user.is_active ? "desativou" : "reativou"} usuário: ${user.full_name}`,
+        });
+      }
       const updated = await api.getProfiles();
       setUsers(updated);
       showToast(user.is_active
@@ -1036,15 +1083,15 @@ function AdminUsers({ bp, showToast, users, setUsers, api }) {
   return (
     <div style={{ paddingBottom:bp.isMobile?80:0 }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:18, gap:10 }}>
-        <div><h2 style={{ fontSize:16, fontWeight:600, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Usuários</h2><p style={{ fontSize:12, color:"#94a3b8", marginTop:2, fontFamily:"'DM Sans',sans-serif" }}>{users.length} cadastrado{users.length!==1?"s":""}</p></div>
+        <div><h2 style={{ fontSize:16, fontWeight:600, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Usuários</h2><p style={{ fontSize:12, color:"#94a3b8", marginTop:2, fontFamily:"'DM Sans',sans-serif" }}>{visibleUsers.length} cadastrado{visibleUsers.length!==1?"s":""}</p></div>
         <button onClick={()=>setModal("new")} style={{ padding:"9px 16px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}><Icon name="plus" size={15} color="#fff" /> {bp.isMobile?"Novo":"Novo usuário"}</button>
       </div>
       <div style={{ display:"flex", gap:10, marginBottom:14, flexWrap:"wrap" }}>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por nome ou e-mail..." style={{ ...inp, flex:"1 1 200px" }} />
-        <select value={filterRole} onChange={e=>setFilterRole(e.target.value)} style={{ ...inp, width:"auto" }}><option value="">Todos os perfis</option>{ROLES.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select>
+        <select value={filterRole} onChange={e=>setFilterRole(e.target.value)} style={{ ...inp, width:"auto" }}><option value="">Todos os perfis</option>{availableRoles.map(r=><option key={r.key} value={r.key}>{r.label}</option>)}</select>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10, marginBottom:18 }}>
-        {ROLES.map(r=>{ const count=users.filter(u=>u.role===r.key).length; return (<div key={r.key} onClick={()=>setFilterRole(fr=>fr===r.key?"":r.key)} style={{ background:"#fff", borderRadius:10, padding:"12px 14px", border:`1px solid ${filterRole===r.key?r.color:"#e2e8f0"}`, cursor:"pointer", borderLeft:`4px solid ${r.color}` }}><div style={{ fontSize:bp.isMobile?18:22, fontWeight:700, color:r.color, fontFamily:"'Outfit',sans-serif" }}>{count}</div><div style={{ fontSize:bp.isMobile?10:11, color:"#64748b", fontWeight:500, marginTop:2, fontFamily:"'DM Sans',sans-serif" }}>{r.label}</div></div>); })}
+        {availableRoles.map(r=>{ const count=visibleUsers.filter(u=>u.role===r.key).length; return (<div key={r.key} onClick={()=>setFilterRole(fr=>fr===r.key?"":r.key)} style={{ background:"#fff", borderRadius:10, padding:"12px 14px", border:`1px solid ${filterRole===r.key?r.color:"#e2e8f0"}`, cursor:"pointer", borderLeft:`4px solid ${r.color}` }}><div style={{ fontSize:bp.isMobile?18:22, fontWeight:700, color:r.color, fontFamily:"'Outfit',sans-serif" }}>{count}</div><div style={{ fontSize:bp.isMobile?10:11, color:"#64748b", fontWeight:500, marginTop:2, fontFamily:"'DM Sans',sans-serif" }}>{r.label}</div></div>); })}
       </div>
       {bp.isMobile?(
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
@@ -1058,7 +1105,7 @@ function AdminUsers({ bp, showToast, users, setUsers, api }) {
           </table>
         </div>
       )}
-      {modal&&<UserModal user={modal==="new"?null:modal} onSave={saveUser} onClose={()=>setModal(null)} bp={bp} />}
+      {modal&&<UserModal user={modal==="new"?null:modal} onSave={saveUser} onClose={()=>setModal(null)} bp={bp} availableRoles={availableRoles} />}
       {confirmDeact&&<div onClick={()=>setConfirmDeact(null)} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.5)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}><div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:14, padding:"24px", maxWidth:380, width:"100%", boxShadow:"0 24px 60px rgba(0,0,0,0.2)", textAlign:"center" }}><Icon name="alertCircle" size={32} color="#dc2626" style={{ marginBottom:12 }} /><h3 style={{ fontWeight:600, fontSize:16, marginBottom:8, fontFamily:"'Outfit',sans-serif" }}>Desativar usuário?</h3><p style={{ fontSize:13, color:"#64748b", lineHeight:1.6, marginBottom:20, fontFamily:"'DM Sans',sans-serif" }}><strong>{confirmDeact.full_name}</strong> não poderá mais acessar o sistema.</p><div style={{ display:"flex", gap:10 }}><button onClick={()=>setConfirmDeact(null)} style={{ flex:1, padding:"10px", border:"1px solid #e2e8f0", borderRadius:8, background:"#fff", cursor:"pointer", fontSize:13, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>Cancelar</button><button onClick={()=>toggleActive(confirmDeact)} style={{ flex:1, padding:"10px", background:"#ef4444", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>Desativar</button></div></div></div>}
     </div>
   );
@@ -1067,7 +1114,7 @@ function AdminUsers({ bp, showToast, users, setUsers, api }) {
 // ─────────────────────────────────────────────
 // ROOT APP
 // ─────────────────────────────────────────────
-function AdminTeams({ bp, showToast, teams, setTeams, api }) {
+function AdminTeams({ bp, showToast, teams, setTeams, api, currentUser }) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ name:"", slug:"", color:"#6366f1" });
   const [errors, setErrors] = useState({});
@@ -1079,6 +1126,18 @@ function AdminTeams({ bp, showToast, teams, setTeams, api }) {
     if (Object.keys(e).length) { setErrors(e); return; }
     try {
       const created = await api.createTeam(form);
+      if (currentUser.role === "supervisor") {
+        await api.createAuditLog({
+          actorId: currentUser.id,
+          actorName: currentUser.full_name,
+          action: "create_team",
+          entity: "teams",
+          entityId: created.id,
+          oldValue: null,
+          newValue: created,
+          description: `Supervisor criou equipe: ${created.name}`,
+        });
+      }
       setTeams(prev => [...prev, created]);
       setModal(false);
       setForm({ name: "", slug: "", color: "#6366f1" });
@@ -1150,7 +1209,7 @@ function AdminTeams({ bp, showToast, teams, setTeams, api }) {
   );
 }
 
-function AdminTypes({ bp, showToast, requestTypes, setRequestTypes, teams, api }) {
+function AdminTypes({ bp, showToast, requestTypes, setRequestTypes, teams, api, currentUser }) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ name:"", team_id:"", description:"" });
   const [errors, setErrors] = useState({});
@@ -1162,6 +1221,18 @@ function AdminTypes({ bp, showToast, requestTypes, setRequestTypes, teams, api }
     if (Object.keys(e).length) { setErrors(e); return; }
     try {
       const created = await api.createRequestType(form);
+      if (currentUser.role === "supervisor") {
+        await api.createAuditLog({
+          actorId: currentUser.id,
+          actorName: currentUser.full_name,
+          action: "create_request_type",
+          entity: "request_types",
+          entityId: created.id,
+          oldValue: null,
+          newValue: created,
+          description: `Supervisor criou tipo: ${created.name}`,
+        });
+      }
       setRequestTypes(prev => [...prev, created]);
       setModal(false);
       setForm({ name: "", team_id: "", description: "" });
@@ -1236,6 +1307,88 @@ function AdminTypes({ bp, showToast, requestTypes, setRequestTypes, teams, api }
               <button onClick={save} style={{ padding:"10px 24px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>Criar tipo</button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AuditoriaView({ bp, api }) {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getAuditLogs()
+      .then(data => setLogs(data || []))
+      .catch(err => console.error(err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const actionLabels = {
+    update_request: "Alterou solicitação",
+    delete_request: "Deletou solicitação",
+    create_user: "Criou usuário",
+    update_user: "Alterou usuário",
+    deactivate_user: "Desativou usuário",
+    create_team: "Criou equipe",
+    create_request_type: "Criou tipo",
+  };
+
+  return (
+    <div style={{ paddingBottom: bp.isMobile ? 80 : 0 }}>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 600, fontFamily: "'Outfit', sans-serif" }}>
+          Auditoria
+        </h2>
+        <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 2, fontFamily: "'DM Sans', sans-serif" }}>
+          Ações realizadas pelos supervisores
+        </p>
+      </div>
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 40, color: "#94a3b8" }}>
+          Carregando...
+        </div>
+      ) : (
+        <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                {["Data/Hora","Supervisor","Ação","Entidade","Descrição"].map(h => (
+                  <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontWeight: 600, color: "#374151", fontSize: 12, fontFamily: "'Outfit', sans-serif", whiteSpace: "nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map(log => (
+                <tr key={log.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                  <td style={{ padding: "11px 16px", color: "#94a3b8", fontSize: 12, whiteSpace: "nowrap", fontFamily: "'DM Sans', sans-serif" }}>
+                    {new Date(log.created_at).toLocaleString("pt-BR")}
+                  </td>
+                  <td style={{ padding: "11px 16px", fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>
+                    {log.actor_name}
+                  </td>
+                  <td style={{ padding: "11px 16px" }}>
+                    <span style={{ padding: "2px 8px", borderRadius: 6, background: "#fef3c7", color: "#92400e", fontWeight: 600, fontSize: 12 }}>
+                      {actionLabels[log.action] || log.action}
+                    </span>
+                  </td>
+                  <td style={{ padding: "11px 16px", color: "#64748b", fontFamily: "'DM Sans', sans-serif" }}>
+                    {log.entity}
+                  </td>
+                  <td style={{ padding: "11px 16px", color: "#374151", fontFamily: "'DM Sans', sans-serif", maxWidth: 300 }}>
+                    {log.description || "—"}
+                  </td>
+                </tr>
+              ))}
+              {logs.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ padding: 32, textAlign: "center", color: "#94a3b8", fontFamily: "'DM Sans', sans-serif" }}>
+                    Nenhuma ação registrada ainda.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
@@ -1408,7 +1561,24 @@ export default function ApexSolicitacoes() {
 
   const updateRequestFn = async (id, patch) => {
     try {
+      const oldRequest = requests.find(r => r.id === id);
       await api.updateRequest(id, patch);
+      if (currentUser.role === "supervisor") {
+        await api.createAuditLog({
+          actorId: currentUser.id,
+          actorName: currentUser.full_name,
+          action: "update_request",
+          entity: "requests",
+          entityId: id,
+          oldValue: {
+            status: oldRequest?.status,
+            priority: oldRequest?.priority,
+            assignee_id: oldRequest?.assignee_id,
+          },
+          newValue: patch,
+          description: `Supervisor alterou solicitação: ${Object.keys(patch).join(", ")}`,
+        });
+      }
       setRequests(prev => prev.map(r =>
         r.id === id ? { ...r, ...patch, updated_at: new Date().toISOString() } : r
       ));
@@ -1628,6 +1798,7 @@ export default function ApexSolicitacoes() {
                     teams={teams}
                     setTeams={setTeams}
                     api={api}
+                    currentUser={currentUser}
                   />
                 )}
                 {view === "admin-types" && (
@@ -1637,6 +1808,14 @@ export default function ApexSolicitacoes() {
                     requestTypes={requestTypes}
                     setRequestTypes={setRequestTypes}
                     teams={teams}
+                    api={api}
+                    currentUser={currentUser}
+                  />
+                )}
+                {view === "auditoria" && currentUser.role === "admin" && (
+                  <AuditoriaView
+                    currentUser={currentUser}
+                    bp={bp}
                     api={api}
                   />
                 )}
