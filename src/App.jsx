@@ -205,28 +205,62 @@ const VisibilityToggle = ({ value, onChange }) => (
 // ─────────────────────────────────────────────
 // AVATAR com foto
 // ─────────────────────────────────────────────
-function Avatar({ user, size=32 }) {
+function Avatar({ user, size = 32 }) {
   const colors = ["#6366f1","#0ea5e9","#10b981","#f59e0b","#ef4444","#8b5cf6","#ec4899"];
-  const color = colors[(user?.full_name?.charCodeAt(0)||0)%colors.length];
-  const initials = user?.full_name?.split(" ").slice(0,2).map(n=>n[0]).join("")||"?";
-  const avatarUrl = user?.avatar || user?.avatar_url;
+  const color = colors[(user?.full_name?.charCodeAt(0) || 0) % colors.length];
+  const initials = user?.full_name?.split(" ").slice(0, 2).map(n => n[0]).join("") || "?";
+  const avatarUrl = user?.avatar_url || user?.avatar;
+
   if (avatarUrl) {
     return (
-      <img
-        src={avatarUrl}
-        alt={user?.full_name || ""}
-        style={{
-          width: size,
-          height: size,
-          borderRadius: "50%",
-          objectFit: "cover",
-          flexShrink: 0,
-          display: "block"
-        }}
-      />
+      <div style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        overflow: "hidden",
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: color,
+      }}>
+        <img
+          src={avatarUrl}
+          alt={user?.full_name || ""}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center",
+            display: "block",
+          }}
+          onError={(e) => {
+            e.target.style.display = "none";
+            e.target.parentElement.innerHTML = initials;
+          }}
+        />
+      </div>
     );
   }
-  return <div style={{ width:size, height:size, borderRadius:"50%", background:color, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:600, fontSize:size*0.36, flexShrink:0, fontFamily:"'DM Sans',sans-serif" }}>{initials}</div>;
+
+  return (
+    <div style={{
+      width: size,
+      height: size,
+      borderRadius: "50%",
+      background: color,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "#fff",
+      fontWeight: 600,
+      fontSize: size * 0.36,
+      flexShrink: 0,
+      fontFamily: "'DM Sans', sans-serif",
+    }}>
+      {initials}
+    </div>
+  );
 }
 
 const Badge = ({ label, color, bg, small }) => (
