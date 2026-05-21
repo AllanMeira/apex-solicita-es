@@ -945,7 +945,13 @@ function HistoricoView({ requests, currentUser, openRequest, bp, teams = TEAMS, 
 function NewRequestView({ currentUser, setView, showToast, bp, teams, requestTypes, users, requests, originView, api, loadAllData }) {
   const [form,setForm]=useState({title:"",description:"",team_id:"",type_id:"",priority:"media",assignee_id:"",client_name:""});
   const types=requestTypes.filter(t=>t.team_id===form.team_id);
-  const members=users.filter(u=>(u.is_active!==false)&&isStaffRole(u.role)&&u.team_id===form.team_id);
+  const members = (users || []).filter(u => {
+    if (!u.is_active && u.is_active !== undefined) return false;
+    if (u.role === "solicitante") return false;
+    if (!form.team_id) return false;
+    return u.team_id === form.team_id ||
+      ["admin","supervisor","gestor"].includes(u.role);
+  });
   const back=originView || (currentUser.role==="solicitante"?"my-requests":"requests");
   const nextProtocol = () => {
     const year = new Date().getFullYear();
@@ -1901,6 +1907,7 @@ export default function ApexSolicitacoes() {
                   <NewRequestView
                     currentUser={currentUser}
                     setView={setView}
+                    setRequests={setRequests}
                     showToast={showToast}
                     bp={bp}
                     teams={teams}
