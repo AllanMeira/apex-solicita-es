@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { supabase } from "./lib/supabase";
+import { hasSupabaseConfig, supabase } from "./lib/supabase";
 import * as api from "./lib/api";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -1891,6 +1891,14 @@ export default function ApexSolicitacoes() {
         localStorage.removeItem(key);
       }
     });
+
+    if (!hasSupabaseConfig) {
+      console.error("Configuração do Supabase ausente. Verifique VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.");
+      setAuthLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
 
     const init = async () => {
       try {
