@@ -88,10 +88,9 @@ export async function getRequests() {
 }
 
 export async function createRequest(request) {
-  const { protocol, ...data } = request;
   const { data: result, error } = await supabase
     .from("requests")
-    .insert(data)
+    .insert(request)
     .select()
     .single();
   if (error) throw error;
@@ -208,6 +207,17 @@ export async function uploadAttachment(requestId, uploaderId, file) {
     throw error;
   }
   return data;
+}
+
+export async function getAttachmentDownloadUrl(filePath) {
+  const { data, error } = await supabase.storage
+    .from("request-attachments")
+    .createSignedUrl(filePath, 60);
+  if (error) {
+    console.error("Attachment download URL error:", error);
+    throw error;
+  }
+  return data?.signedUrl;
 }
 
 export async function getHistory(requestId) {

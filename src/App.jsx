@@ -168,6 +168,11 @@ const grc = k => ROLES.find(r=>r.key===k)||ROLES[4];
 const fd = d => d?new Date(d).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit"}):"—";
 const fdt = d => d?new Date(d).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
 const fsz = b => b>1048576?(b/1048576).toFixed(1)+" MB":Math.round(b/1024)+" KB";
+const teamById = (teams, id) => teams?.find(t=>t.id===id) || gt(id);
+const userById = (users, id) => users?.find(u=>u.id===id) || gu(id);
+const requestAssignee = (request, users) => request._assignee || userById(users, request.assignee_id);
+const requestRequester = (request, users) => request._requester || userById(users, request.requester_id);
+const isStaffRole = role => ["admin","gestor","supervisor","membro_equipe"].includes(role);
 
 const inp = { width:"100%", padding:"10px 12px", borderRadius:8, border:"1px solid #e2e8f0", fontSize:14, outline:"none", background:"#fafafa", color:"#0f172a", WebkitAppearance:"none", fontFamily:"'DM Sans', sans-serif" };
 const Field = ({ label, children }) => (
@@ -473,9 +478,9 @@ function Topbar({ currentUser, view, setSidebarOpen, bp, onLogout }) {
 // ─────────────────────────────────────────────
 // REQUEST CARD
 // ─────────────────────────────────────────────
-function RequestCard({ r, onClick }) {
-  const assigneeData = r._assignee || gu(r.assignee_id);
-  const s=gs(r.status), p=gp(r.priority), t=r.team || gt(r.team_id), a=assigneeData;
+function RequestCard({ r, onClick, teams = TEAMS, users = USERS }) {
+  const assigneeData = requestAssignee(r, users);
+  const s=gs(r.status), p=gp(r.priority), t=r.team || teamById(teams, r.team_id), a=assigneeData;
   const waiting = r.status==="aguardando_solicitante";
   return (
     <div onClick={onClick} style={{ background:"#fff", borderRadius:12, border:waiting?"1.5px solid #fbbf24":"1px solid #e2e8f0", padding:"14px 16px", cursor:"pointer", borderLeft:`4px solid ${t?.color||"#e2e8f0"}`, transition:"all 0.15s" }}
@@ -589,7 +594,7 @@ function MetricCard({ label, value, color, sub, bp }) {
 // ─────────────────────────────────────────────
 // MY REQUESTS (solicitante)
 // ─────────────────────────────────────────────
-function MyRequestsView({ requests, currentUser, openRequest, setView, bp }) {
+function MyRequestsView({ requests, currentUser, openRequest, setView, bp, teams = TEAMS, users = USERS }) {
   const [tab, setTab] = useState("ativos");
   const [search, setSearch] = useState("");
   const all = requests.filter(x=>x.requester_id===currentUser.id);
@@ -623,7 +628,7 @@ function MyRequestsView({ requests, currentUser, openRequest, setView, bp }) {
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por título ou protocolo..." style={{ ...inp, fontSize:13 }} />
         </div>
         <div style={{ padding:"14px", display:"flex", flexDirection:"column", gap:10 }}>
-          {listed.length===0?<div style={{ textAlign:"center", padding:"32px 20px", color:"#94a3b8", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>Nenhuma solicitação encontrada.</div>:listed.map(r=><RequestCard key={r.id} r={r} onClick={()=>openRequest(r.id)} />)}
+          {listed.length===0?<div style={{ textAlign:"center", padding:"32px 20px", color:"#94a3b8", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>Nenhuma solicitação encontrada.</div>:listed.map(r=><RequestCard key={r.id} r={r} onClick={()=>openRequest(r.id)} teams={teams} users={users} />)}
         </div>
       </div>
     </div>
@@ -633,7 +638,7 @@ function MyRequestsView({ requests, currentUser, openRequest, setView, bp }) {
 // ─────────────────────────────────────────────
 // DETAIL VIEW
 // ─────────────────────────────────────────────
-function DetailView({ request, currentUser, updateRequest, setView, showToast, setRequests, bp, detailFrom, users = [], api }) {
+function DetailView({ request, currentUser, updateRequest, setView, showToast, setRequests, bp, detailFrom, users = [], teams = [], api }) {
   const [tab, setTab] = useState("timeline");
   const [nc, setNc] = useState({ content:"", visibility:"publico" });
   const fileRef = useRef();
@@ -641,9 +646,9 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
   const canEdit = ["admin","gestor","supervisor","membro_equipe"].includes(currentUser.role);
   const canSeeInternalComments = ["admin","gestor","supervisor","membro_equipe"].includes(currentUser.role);
   const visibleComments = (request.comments || []).filter(c => c.visibility === "publico" || canSeeInternalComments);
-  const requester = request._requester || gu(request.requester_id);
-  const assignee = request._assignee || gu(request.assignee_id);
-  const s=gs(request.status), p=gp(request.priority), team=request.team || gt(request.team_id), type=request.type || gtype(request.type_id);
+  const requester = requestRequester(request, users);
+  const assignee = requestAssignee(request, users);
+  const s=gs(request.status), p=gp(request.priority), team=request.team || teamById(teams, request.team_id), type=request.type || gtype(request.type_id);
   const teamMembers = users.filter(u => {
     if (!u.is_active && u.is_active !== undefined) return false;
     if (["solicitante"].includes(u.role)) return false;
@@ -693,6 +698,16 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
     }
     e.target.value = "";
   };  const tabs = isSolicitante?[["timeline","Acompanhamento"],["attachments","Anexos"]]:[["timeline","Timeline"],["comments","Comentários"],["attachments","Anexos"]];
+  const downloadAttachment = async (attachment) => {
+    try {
+      const url = await api.getAttachmentDownloadUrl(attachment.file_path);
+      if (!url) throw new Error("URL de download indisponível");
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      console.error("downloadAttachment error:", err);
+      showToast("Erro ao baixar anexo: " + (err?.message || JSON.stringify(err)), "error");
+    }
+  };
 
   return (
     <div style={{ paddingBottom:bp.isMobile?80:0 }}>
@@ -745,7 +760,7 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
               </div>}
               {tab==="attachments"&&<div>
                 <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:14 }}>
-                  {(request.attachments||[]).map(a=>{ const ext=a.file_name.split(".").pop().toUpperCase(); const ec={PDF:"#ef4444",PNG:"#10b981",JPG:"#0ea5e9",XLSX:"#16a34a",CSV:"#16a34a",DOCX:"#2563eb"}[ext]||"#6366f1"; return (<div key={a.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"#f8fafc", borderRadius:10, border:"1px solid #e2e8f0" }}><div style={{ width:34, height:34, borderRadius:8, background:ec+"15", border:`1px solid ${ec}30`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ fontSize:10, fontWeight:700, color:ec, fontFamily:"monospace" }}>{ext}</span></div><div style={{ flex:1, overflow:"hidden" }}><div style={{ fontWeight:600, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{a.file_name}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{fsz(a.file_size)} · {fd(a.created_at)}</div></div><button style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:6, padding:"5px 10px", cursor:"pointer", display:"flex", alignItems:"center", gap:4, fontSize:12, color:"#64748b" }}><Icon name="download" size={13} color="#64748b" /></button></div>); })}
+                  {(request.attachments||[]).map(a=>{ const ext=a.file_name.split(".").pop().toUpperCase(); const ec={PDF:"#ef4444",PNG:"#10b981",JPG:"#0ea5e9",XLSX:"#16a34a",CSV:"#16a34a",DOCX:"#2563eb"}[ext]||"#6366f1"; return (<div key={a.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"#f8fafc", borderRadius:10, border:"1px solid #e2e8f0" }}><div style={{ width:34, height:34, borderRadius:8, background:ec+"15", border:`1px solid ${ec}30`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ fontSize:10, fontWeight:700, color:ec, fontFamily:"monospace" }}>{ext}</span></div><div style={{ flex:1, overflow:"hidden" }}><div style={{ fontWeight:600, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{a.file_name}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{fsz(a.file_size)} · {fd(a.created_at)}</div></div><button onClick={()=>downloadAttachment(a)} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:6, padding:"5px 10px", cursor:"pointer", display:"flex", alignItems:"center", gap:4, fontSize:12, color:"#64748b" }}><Icon name="download" size={13} color="#64748b" /></button></div>); })}
                   {!(request.attachments||[]).length&&<div style={{ textAlign:"center", color:"#94a3b8", fontSize:13, padding:"20px 0", fontFamily:"'DM Sans',sans-serif" }}>Nenhum arquivo anexado.</div>}
                 </div>
                 <input type="file" ref={fileRef} style={{ display:"none" }} onChange={addFile} />
@@ -775,7 +790,7 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
 // ─────────────────────────────────────────────
 // DASHBOARD
 // ─────────────────────────────────────────────
-function Dashboard({ requests, currentUser, openRequest, bp }) {
+function Dashboard({ requests, currentUser, openRequest, bp, teams = TEAMS, users = USERS }) {
   const vis = ["admin","gestor","supervisor"].includes(currentUser.role)?requests:requests.filter(r=>r.team_id===currentUser.team_id||r.assignee_id===currentUser.id);
   const stats=[{label:"Total",v:vis.length,color:"#1e3d6e"},{label:"Novas",v:vis.filter(r=>r.status==="nova").length,color:"#d97706"},{label:"Andamento",v:vis.filter(r=>r.status==="em_andamento").length,color:"#2563eb"},{label:"Críticas",v:vis.filter(r=>r.priority==="critica"&&!["finalizada","cancelada"].includes(r.status)).length,color:"#dc2626"},{label:"Finalizadas",v:vis.filter(r=>r.status==="finalizada").length,color:"#16a34a"}];
   const recent=[...vis].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,5);
@@ -788,12 +803,12 @@ function Dashboard({ requests, currentUser, openRequest, bp }) {
       <div style={{ display:"grid", gridTemplateColumns:bp.isDesktop?"1fr 1fr":"1fr", gap:16 }}>
         <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"hidden" }}>
           <div style={{ padding:"14px 18px", borderBottom:"1px solid #f1f5f9", fontWeight:600, fontSize:14, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Atividade Recente</div>
-          {recent.map(r=>{ const s=gs(r.status),t=gt(r.team_id); return (<div key={r.id} onClick={()=>openRequest(r.id)} style={{ padding:"12px 18px", borderBottom:"1px solid #f8fafc", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{ width:3, height:32, borderRadius:2, background:t?.color||"#e2e8f0", flexShrink:0 }} /><div style={{ flex:1, overflow:"hidden" }}><div style={{ fontWeight:600, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{r.protocol} · {fd(r.updated_at)}</div></div><Badge label={s.label} color={s.color} bg={s.bg} small /></div>); })}
+          {recent.map(r=>{ const s=gs(r.status),t=teamById(teams,r.team_id); return (<div key={r.id} onClick={()=>openRequest(r.id)} style={{ padding:"12px 18px", borderBottom:"1px solid #f8fafc", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{ width:3, height:32, borderRadius:2, background:t?.color||"#e2e8f0", flexShrink:0 }} /><div style={{ flex:1, overflow:"hidden" }}><div style={{ fontWeight:600, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{r.protocol} · {fd(r.updated_at)}</div></div><Badge label={s.label} color={s.color} bg={s.bg} small /></div>); })}
           {!recent.length&&<div style={{ padding:24, textAlign:"center", color:"#94a3b8", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>Nenhuma atividade.</div>}
         </div>
         <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"hidden" }}>
           <div style={{ padding:"14px 18px", borderBottom:"1px solid #f1f5f9", fontWeight:600, fontSize:14, fontFamily:"'Outfit',sans-serif", color:"#dc2626", display:"flex", alignItems:"center", gap:8 }}><Icon name="alertCircle" size={16} color="#dc2626" /> Críticas Abertas</div>
-          {criticals.map(r=>{ const a=gu(r.assignee_id); return (<div key={r.id} onClick={()=>openRequest(r.id)} style={{ padding:"12px 18px", borderBottom:"1px solid #f8fafc", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{ flex:1 }}><div style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{a?"Resp: "+a.full_name:"Sem responsável"}</div></div><Badge label={gs(r.status).label} color={gs(r.status).color} bg={gs(r.status).bg} small /></div>); })}
+          {criticals.map(r=>{ const a=requestAssignee(r,users); return (<div key={r.id} onClick={()=>openRequest(r.id)} style={{ padding:"12px 18px", borderBottom:"1px solid #f8fafc", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{ flex:1 }}><div style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{a?"Resp: "+a.full_name:"Sem responsável"}</div></div><Badge label={gs(r.status).label} color={gs(r.status).color} bg={gs(r.status).bg} small /></div>); })}
           {!criticals.length&&<div style={{ padding:24, textAlign:"center", color:"#94a3b8", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>Nenhuma crítica aberta.</div>}
         </div>
       </div>
@@ -807,9 +822,10 @@ function Dashboard({ requests, currentUser, openRequest, bp }) {
 const QUICK_FILTERS=[{key:"todos",label:"Todos",filter:()=>true},{key:"meus",label:"Meus",filter:(r,uid)=>r.assignee_id===uid},{key:"sem_resp",label:"Sem responsável",filter:r=>!r.assignee_id},{key:"criticos",label:"Críticos",filter:r=>r.priority==="critica"},{key:"aguardando",label:"Aguardando",filter:r=>["aguardando_solicitante","aguardando_terceiro"].includes(r.status)}];
 function getMonthRange(){const now=new Date();return{from:new Date(now.getFullYear(),now.getMonth(),1).toISOString().split("T")[0],to:new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().split("T")[0]};}
 
-function RequestsView({ requests, currentUser, openRequest, setView, bp }) {
+function RequestsView({ requests, currentUser, openRequest, setView, bp, teams = TEAMS, users = USERS }) {
   const [search,setSearch]=useState(""); const [teamF,setTeamF]=useState(""); const [priorityF,setPriorityF]=useState(""); const [dateFrom,setDateFrom]=useState(getMonthRange().from); const [dateTo,setDateTo]=useState(getMonthRange().to); const [quick,setQuick]=useState("todos"); const [showFin,setShowFin]=useState(false); const [showFilters,setShowFilters]=useState(false); const [mode,setMode]=useState(bp.isMobile?"list":"kanban");
-  const base=useMemo(()=>{let r=requests; if(currentUser.role==="membro_equipe") r=r.filter(x=>x.team_id===currentUser.team_id||x.assignee_id===currentUser.id); if(dateFrom) r=r.filter(x=>x.created_at>=dateFrom); if(dateTo) r=r.filter(x=>x.created_at<=dateTo+"T23:59:59"); if(teamF) r=r.filter(x=>x.team_id===teamF); if(priorityF) r=r.filter(x=>x.priority===priorityF); if(search) r=r.filter(x=>x.title.toLowerCase().includes(search.toLowerCase())||x.protocol.includes(search)); const qf=QUICK_FILTERS.find(f=>f.key===quick); if(qf) r=r.filter(x=>qf.filter(x,currentUser.id)); return r;},[requests,currentUser,dateFrom,dateTo,teamF,priorityF,search,quick]);
+  const scopedRequests=useMemo(()=>{let r=requests; if(currentUser.role==="membro_equipe") r=r.filter(x=>x.team_id===currentUser.team_id||x.assignee_id===currentUser.id); if(dateFrom) r=r.filter(x=>x.created_at>=dateFrom); if(dateTo) r=r.filter(x=>x.created_at<=dateTo+"T23:59:59"); if(teamF) r=r.filter(x=>x.team_id===teamF); if(priorityF) r=r.filter(x=>x.priority===priorityF); if(search) r=r.filter(x=>x.title.toLowerCase().includes(search.toLowerCase())||x.protocol.includes(search)); return r;},[requests,currentUser,dateFrom,dateTo,teamF,priorityF,search]);
+  const base=useMemo(()=>{let r=scopedRequests; const qf=QUICK_FILTERS.find(f=>f.key===quick); if(qf) r=r.filter(x=>qf.filter(x,currentUser.id)); return r;},[scopedRequests,quick,currentUser.id]);
   const kanbanCols=useMemo(()=>{const a=STATUSES.filter(s=>!["finalizada","cancelada"].includes(s.key));const c=STATUSES.filter(s=>["finalizada","cancelada"].includes(s.key));return showFin?[...a,...c]:a;},[showFin]);
   const setMonth=offset=>{const now=new Date();const d=new Date(now.getFullYear(),now.getMonth()+offset,1);setDateFrom(new Date(d.getFullYear(),d.getMonth(),1).toISOString().split("T")[0]);setDateTo(new Date(d.getFullYear(),d.getMonth()+1,0).toISOString().split("T")[0]);};
   const monthLabel=useMemo(()=>{if(!dateFrom) return "Período livre";return new Date(dateFrom+"T12:00:00").toLocaleDateString("pt-BR",{month:"long",year:"numeric"});},[dateFrom]);
@@ -821,9 +837,9 @@ function RequestsView({ requests, currentUser, openRequest, setView, bp }) {
         <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
           <input placeholder="Buscar por título ou protocolo..." value={search} onChange={e=>setSearch(e.target.value)} style={{ ...inp, flex:"1 1 180px" }} />
           {bp.isMobile&&<button onClick={()=>setShowFilters(v=>!v)} style={{ padding:"10px 12px", border:"1px solid #e2e8f0", borderRadius:8, background:showFilters?"#eff6ff":"#fff", cursor:"pointer" }}><Icon name="filter" size={15} color={showFilters?"#2563eb":"#64748b"} /></button>}
-          {!bp.isMobile&&<><select value={teamF} onChange={e=>setTeamF(e.target.value)} style={{ ...inp, width:"auto" }}><option value="">Todas equipes</option>{TEAMS.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select><select value={priorityF} onChange={e=>setPriorityF(e.target.value)} style={{ ...inp, width:"auto" }}><option value="">Todas prioridades</option>{PRIORITIES.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select><div style={{ display:"flex", border:"1px solid #e2e8f0", borderRadius:8, overflow:"hidden" }}>{(bp.isTablet?[["list","Lista"],["table","Tabela"]]:[["kanban","Kanban"],["list","Lista"],["table","Tabela"]]).map(([k,l])=><button key={k} onClick={()=>setMode(k)} style={{ padding:"9px 13px", border:"none", background:mode===k?"#1e3d6e":"#fff", color:mode===k?"#fff":"#64748b", cursor:"pointer", fontSize:12, fontWeight:500, fontFamily:"'DM Sans',sans-serif" }}>{l}</button>)}</div><button onClick={()=>setView("new")} style={{ padding:"9px 16px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>+ Nova</button></>}
+          {!bp.isMobile&&<><select value={teamF} onChange={e=>setTeamF(e.target.value)} style={{ ...inp, width:"auto" }}><option value="">Todas equipes</option>{teams.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select><select value={priorityF} onChange={e=>setPriorityF(e.target.value)} style={{ ...inp, width:"auto" }}><option value="">Todas prioridades</option>{PRIORITIES.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select><div style={{ display:"flex", border:"1px solid #e2e8f0", borderRadius:8, overflow:"hidden" }}>{(bp.isTablet?[["list","Lista"],["table","Tabela"]]:[["kanban","Kanban"],["list","Lista"],["table","Tabela"]]).map(([k,l])=><button key={k} onClick={()=>setMode(k)} style={{ padding:"9px 13px", border:"none", background:mode===k?"#1e3d6e":"#fff", color:mode===k?"#fff":"#64748b", cursor:"pointer", fontSize:12, fontWeight:500, fontFamily:"'DM Sans',sans-serif" }}>{l}</button>)}</div><button onClick={()=>setView("new")} style={{ padding:"9px 16px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>+ Nova</button></>}
         </div>
-        {bp.isMobile&&showFilters&&<div style={{ marginTop:10, display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}><select value={teamF} onChange={e=>setTeamF(e.target.value)} style={{ ...inp, fontSize:13 }}><option value="">Todas equipes</option>{TEAMS.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select><select value={priorityF} onChange={e=>setPriorityF(e.target.value)} style={{ ...inp, fontSize:13 }}><option value="">Todas prioridades</option>{PRIORITIES.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select></div>}
+        {bp.isMobile&&showFilters&&<div style={{ marginTop:10, display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}><select value={teamF} onChange={e=>setTeamF(e.target.value)} style={{ ...inp, fontSize:13 }}><option value="">Todas equipes</option>{teams.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select><select value={priorityF} onChange={e=>setPriorityF(e.target.value)} style={{ ...inp, fontSize:13 }}><option value="">Todas prioridades</option>{PRIORITIES.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select></div>}
         {/* Período */}
         <div style={{ marginTop:10, display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", borderTop:"1px solid #f1f5f9", paddingTop:10 }}>
           <Icon name="calendar" size={14} color="#64748b" />
@@ -837,18 +853,18 @@ function RequestsView({ requests, currentUser, openRequest, setView, bp }) {
         </div>
         {/* Filtros rápidos */}
         <div style={{ marginTop:10, display:"flex", gap:6, flexWrap:"wrap", borderTop:"1px solid #f1f5f9", paddingTop:10 }}>
-          {QUICK_FILTERS.map(f=><button key={f.key} onClick={()=>setQuick(q=>q===f.key?"todos":f.key)} style={{ padding:"5px 12px", borderRadius:20, border:`1.5px solid ${quick===f.key?"#1e3d6e":"#e2e8f0"}`, background:quick===f.key?"#eff6ff":"#fff", color:quick===f.key?"#1e3d6e":"#64748b", cursor:"pointer", fontSize:12, fontWeight:quick===f.key?600:400, fontFamily:"'DM Sans',sans-serif" }}>{f.label} <span style={{ marginLeft:4, background:quick===f.key?"#1e3d6e":"#f1f5f9", color:quick===f.key?"#fff":"#64748b", borderRadius:10, padding:"1px 6px", fontSize:11 }}>{base.filter(x=>f.filter(x,currentUser.id)).length}</span></button>)}
+          {QUICK_FILTERS.map(f=><button key={f.key} onClick={()=>setQuick(q=>q===f.key?"todos":f.key)} style={{ padding:"5px 12px", borderRadius:20, border:`1.5px solid ${quick===f.key?"#1e3d6e":"#e2e8f0"}`, background:quick===f.key?"#eff6ff":"#fff", color:quick===f.key?"#1e3d6e":"#64748b", cursor:"pointer", fontSize:12, fontWeight:quick===f.key?600:400, fontFamily:"'DM Sans',sans-serif" }}>{f.label} <span style={{ marginLeft:4, background:quick===f.key?"#1e3d6e":"#f1f5f9", color:quick===f.key?"#fff":"#64748b", borderRadius:10, padding:"1px 6px", fontSize:11 }}>{scopedRequests.filter(x=>f.filter(x,currentUser.id)).length}</span></button>)}
           {mode==="kanban"&&<button onClick={()=>setShowFin(v=>!v)} style={{ padding:"5px 12px", borderRadius:20, border:`1.5px solid ${showFin?"#16a34a":"#e2e8f0"}`, background:showFin?"#f0fdf4":"#fff", color:showFin?"#16a34a":"#64748b", cursor:"pointer", fontSize:12, fontWeight:showFin?600:400, marginLeft:"auto", fontFamily:"'DM Sans',sans-serif" }}>{showFin?"Ocultar finalizados":"Mostrar finalizados"}</button>}
         </div>
       </div>
-      {mode==="kanban"&&!bp.isMobile&&<KanbanView requests={base} openRequest={openRequest} kanbanCols={kanbanCols} />}
-      {mode==="list"&&<div style={{ display:"flex", flexDirection:"column", gap:10 }}>{base.map(r=><RequestCard key={r.id} r={r} onClick={()=>openRequest(r.id)} />)}{!base.length&&<div style={{ background:"#fff", borderRadius:12, border:"2px dashed #e2e8f0", padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhuma solicitação encontrada.</div>}</div>}
-      {mode==="table"&&!bp.isMobile&&<TableView requests={base} openRequest={openRequest} />}
+      {mode==="kanban"&&!bp.isMobile&&<KanbanView requests={base} openRequest={openRequest} kanbanCols={kanbanCols} teams={teams} users={users} />}
+      {mode==="list"&&<div style={{ display:"flex", flexDirection:"column", gap:10 }}>{base.map(r=><RequestCard key={r.id} r={r} onClick={()=>openRequest(r.id)} teams={teams} users={users} />)}{!base.length&&<div style={{ background:"#fff", borderRadius:12, border:"2px dashed #e2e8f0", padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhuma solicitação encontrada.</div>}</div>}
+      {mode==="table"&&!bp.isMobile&&<TableView requests={base} openRequest={openRequest} teams={teams} users={users} />}
     </div>
   );
 }
 
-function KanbanView({ requests, openRequest, kanbanCols }) {
+function KanbanView({ requests, openRequest, kanbanCols, teams = TEAMS, users = USERS }) {
   return (
     <div style={{ display:"flex", gap:12, overflowX:"auto", paddingBottom:16, alignItems:"flex-start" }}>
       {kanbanCols.map(col=>{ const cr=requests.filter(r=>r.status===col.key); const isClosed=["finalizada","cancelada"].includes(col.key); return (
@@ -859,7 +875,7 @@ function KanbanView({ requests, openRequest, kanbanCols }) {
             <span style={{ background:isClosed?col.bg:"#f1f5f9", color:isClosed?col.color:"#64748b", borderRadius:20, padding:"2px 8px", fontSize:11, fontWeight:700, flexShrink:0, fontFamily:"'DM Sans',sans-serif" }}>{cr.length}</span>
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {cr.map(r=>{ const t=gt(r.team_id),p=gp(r.priority),a=gu(r.assignee_id); return (<div key={r.id} onClick={()=>openRequest(r.id)} style={{ background:"#fff", borderRadius:10, border:"1px solid #e2e8f0", padding:"11px 13px", cursor:"pointer", borderLeft:`3px solid ${t?.color||"#e2e8f0"}`, opacity:isClosed?0.75:1, transition:"all 0.15s" }} onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)";e.currentTarget.style.opacity="1";e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.opacity=isClosed?"0.75":"1";e.currentTarget.style.transform="none";}}><div style={{ fontSize:10, color:"#94a3b8", marginBottom:3, fontFamily:"monospace" }}>{r.protocol}</div><div style={{ fontWeight:600, fontSize:13, lineHeight:1.4, marginBottom:8, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div><div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}><div style={{ display:"flex", alignItems:"center" }}><PriorityDot priority={r.priority} /><span style={{ fontSize:11, color:p.color, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{p.label}</span></div>{a?<Avatar user={a} size={20} />:<span style={{ fontSize:11, color:"#cbd5e1" }}>—</span>}</div>{isClosed&&<div style={{ marginTop:6, fontSize:11, color:col.color, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{r.status==="finalizada"?"Finalizado "+fd(r.updated_at):"Cancelado"}</div>}</div>); })}
+            {cr.map(r=>{ const t=teamById(teams,r.team_id),p=gp(r.priority),a=requestAssignee(r,users); return (<div key={r.id} onClick={()=>openRequest(r.id)} style={{ background:"#fff", borderRadius:10, border:"1px solid #e2e8f0", padding:"11px 13px", cursor:"pointer", borderLeft:`3px solid ${t?.color||"#e2e8f0"}`, opacity:isClosed?0.75:1, transition:"all 0.15s" }} onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)";e.currentTarget.style.opacity="1";e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.opacity=isClosed?"0.75":"1";e.currentTarget.style.transform="none";}}><div style={{ fontSize:10, color:"#94a3b8", marginBottom:3, fontFamily:"monospace" }}>{r.protocol}</div><div style={{ fontWeight:600, fontSize:13, lineHeight:1.4, marginBottom:8, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div><div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}><div style={{ display:"flex", alignItems:"center" }}><PriorityDot priority={r.priority} /><span style={{ fontSize:11, color:p.color, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{p.label}</span></div>{a?<Avatar user={a} size={20} />:<span style={{ fontSize:11, color:"#cbd5e1" }}>—</span>}</div>{isClosed&&<div style={{ marginTop:6, fontSize:11, color:col.color, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{r.status==="finalizada"?"Finalizado "+fd(r.updated_at):"Cancelado"}</div>}</div>); })}
             {!cr.length&&<div style={{ background:"#f8fafc", border:"2px dashed #e2e8f0", borderRadius:10, padding:"18px", textAlign:"center", color:"#cbd5e1", fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>Vazio</div>}
           </div>
         </div>
@@ -868,12 +884,12 @@ function KanbanView({ requests, openRequest, kanbanCols }) {
   );
 }
 
-function TableView({ requests, openRequest }) {
+function TableView({ requests, openRequest, teams = TEAMS, users = USERS }) {
   return (
     <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"auto" }}>
       <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
         <thead><tr style={{ background:"#f8fafc", borderBottom:"1px solid #e2e8f0" }}>{["Protocolo","Título","Equipe","Status","Prioridade","Responsável","Atualizado"].map(h=><th key={h} style={{ padding:"12px 16px", textAlign:"left", fontWeight:600, color:"#374151", fontSize:12, whiteSpace:"nowrap", fontFamily:"'Outfit',sans-serif" }}>{h}</th>)}</tr></thead>
-        <tbody>{requests.map(r=>{ const s=gs(r.status),t=gt(r.team_id),a=gu(r.assignee_id); return (<tr key={r.id} onClick={()=>openRequest(r.id)} style={{ borderBottom:"1px solid #f1f5f9", cursor:"pointer" }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><td style={{ padding:"11px 16px", fontFamily:"monospace", fontSize:12, color:"#1e3d6e", fontWeight:600, whiteSpace:"nowrap" }}>{r.protocol}</td><td style={{ padding:"11px 16px", fontWeight:500, maxWidth:200, fontFamily:"'DM Sans',sans-serif" }}><div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.title}</div></td><td style={{ padding:"11px 16px" }}>{t&&<span style={{ padding:"2px 8px", borderRadius:6, background:t.color+"20", color:t.color, fontWeight:600, fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>{t.name}</span>}</td><td style={{ padding:"11px 16px" }}><Badge label={s.label} color={s.color} bg={s.bg} small /></td><td style={{ padding:"11px 16px" }}><div style={{ display:"flex", alignItems:"center" }}><PriorityDot priority={r.priority} /><span style={{ color:gp(r.priority).color, fontWeight:600, fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>{gp(r.priority).label}</span></div></td><td style={{ padding:"11px 16px" }}>{a?<div style={{ display:"flex", alignItems:"center", gap:6 }}><Avatar user={a} size={22} /><span style={{ fontFamily:"'DM Sans',sans-serif" }}>{a.full_name.split(" ")[0]}</span></div>:<span style={{ color:"#cbd5e1" }}>—</span>}</td><td style={{ padding:"11px 16px", color:"#94a3b8", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{fd(r.updated_at)}</td></tr>); })}{!requests.length&&<tr><td colSpan={7} style={{ padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhuma solicitação encontrada.</td></tr>}</tbody>
+        <tbody>{requests.map(r=>{ const s=gs(r.status),t=teamById(teams,r.team_id),a=requestAssignee(r,users); return (<tr key={r.id} onClick={()=>openRequest(r.id)} style={{ borderBottom:"1px solid #f1f5f9", cursor:"pointer" }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><td style={{ padding:"11px 16px", fontFamily:"monospace", fontSize:12, color:"#1e3d6e", fontWeight:600, whiteSpace:"nowrap" }}>{r.protocol}</td><td style={{ padding:"11px 16px", fontWeight:500, maxWidth:200, fontFamily:"'DM Sans',sans-serif" }}><div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.title}</div></td><td style={{ padding:"11px 16px" }}>{t&&<span style={{ padding:"2px 8px", borderRadius:6, background:t.color+"20", color:t.color, fontWeight:600, fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>{t.name}</span>}</td><td style={{ padding:"11px 16px" }}><Badge label={s.label} color={s.color} bg={s.bg} small /></td><td style={{ padding:"11px 16px" }}><div style={{ display:"flex", alignItems:"center" }}><PriorityDot priority={r.priority} /><span style={{ color:gp(r.priority).color, fontWeight:600, fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>{gp(r.priority).label}</span></div></td><td style={{ padding:"11px 16px" }}>{a?<div style={{ display:"flex", alignItems:"center", gap:6 }}><Avatar user={a} size={22} /><span style={{ fontFamily:"'DM Sans',sans-serif" }}>{a.full_name.split(" ")[0]}</span></div>:<span style={{ color:"#cbd5e1" }}>—</span>}</td><td style={{ padding:"11px 16px", color:"#94a3b8", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{fd(r.updated_at)}</td></tr>); })}{!requests.length&&<tr><td colSpan={7} style={{ padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhuma solicitação encontrada.</td></tr>}</tbody>
       </table>
     </div>
   );
@@ -882,13 +898,13 @@ function TableView({ requests, openRequest }) {
 // ─────────────────────────────────────────────
 // HISTORICO VIEW
 // ─────────────────────────────────────────────
-function HistoricoView({ requests, currentUser, openRequest, bp }) {
+function HistoricoView({ requests, currentUser, openRequest, bp, teams = TEAMS, users = USERS }) {
   const [filters,setFilters]=useState({team:"",status:"finalizada",search:"",dateFrom:"",dateTo:""});
   const [showFilters,setShowFilters]=useState(false);
   const sf=(k,v)=>setFilters(f=>({...f,[k]:v}));
   const base=useMemo(()=>{ let r=requests.filter(x=>["finalizada","cancelada"].includes(x.status)); if(currentUser.role==="membro_equipe") r=r.filter(x=>x.team_id===currentUser.team_id||x.assignee_id===currentUser.id); return r;},[requests,currentUser]);
   const filtered=useMemo(()=>{ let r=base; if(filters.team) r=r.filter(x=>x.team_id===filters.team); if(filters.status) r=r.filter(x=>x.status===filters.status); if(filters.search) r=r.filter(x=>x.title.toLowerCase().includes(filters.search.toLowerCase())||x.protocol.includes(filters.search)); if(filters.dateFrom) r=r.filter(x=>new Date(x.updated_at)>=new Date(filters.dateFrom)); if(filters.dateTo) r=r.filter(x=>new Date(x.updated_at)<=new Date(filters.dateTo+"T23:59:59")); return r.sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));},[base,filters]);
-  const metrics=useMemo(()=>{ const fin=base.filter(x=>x.status==="finalizada"); const canc=base.filter(x=>x.status==="cancelada"); const wt=fin.filter(r=>r.created_at&&r.updated_at); const avgDays=wt.length?(wt.reduce((acc,r)=>acc+Math.max(0,(new Date(r.updated_at)-new Date(r.created_at))/86400000),0)/wt.length).toFixed(1):"—"; const byTeam=TEAMS.map(t=>({...t,total:fin.filter(r=>r.team_id===t.id).length,canceladas:canc.filter(r=>r.team_id===t.id).length})); const now=new Date(); const byMonth=Array.from({length:4},(_,i)=>{ const d=new Date(now.getFullYear(),now.getMonth()-i,1); return{label:d.toLocaleDateString("pt-BR",{month:"short",year:"2-digit"}),count:fin.filter(r=>{ const rd=new Date(r.updated_at); return rd.getMonth()===d.getMonth()&&rd.getFullYear()===d.getFullYear(); }).length}; }).reverse(); const ac={}; fin.forEach(r=>{ if(r.assignee_id) ac[r.assignee_id]=(ac[r.assignee_id]||0)+1; }); const topId=Object.entries(ac).sort((a,b)=>b[1]-a[1])[0]?.[0]; return{fin:fin.length,canc:canc.length,avgDays,byTeam,byMonth,topAssignee:topId?gu(topId):null,topCount:topId?ac[topId]:0};},[base]);
+  const metrics=useMemo(()=>{ const fin=base.filter(x=>x.status==="finalizada"); const canc=base.filter(x=>x.status==="cancelada"); const wt=fin.filter(r=>r.created_at&&r.updated_at); const avgDays=wt.length?(wt.reduce((acc,r)=>acc+Math.max(0,(new Date(r.updated_at)-new Date(r.created_at))/86400000),0)/wt.length).toFixed(1):"—"; const byTeam=teams.map(t=>({...t,total:fin.filter(r=>r.team_id===t.id).length,canceladas:canc.filter(r=>r.team_id===t.id).length})); const now=new Date(); const byMonth=Array.from({length:4},(_,i)=>{ const d=new Date(now.getFullYear(),now.getMonth()-i,1); return{label:d.toLocaleDateString("pt-BR",{month:"short",year:"2-digit"}),count:fin.filter(r=>{ const rd=new Date(r.updated_at); return rd.getMonth()===d.getMonth()&&rd.getFullYear()===d.getFullYear(); }).length}; }).reverse(); const ac={}; fin.forEach(r=>{ if(r.assignee_id) ac[r.assignee_id]=(ac[r.assignee_id]||0)+1; }); const topId=Object.entries(ac).sort((a,b)=>b[1]-a[1])[0]?.[0]; return{fin:fin.length,canc:canc.length,avgDays,byTeam,byMonth,topAssignee:topId?userById(users,topId):null,topCount:topId?ac[topId]:0};},[base,teams,users]);
   const maxBar=Math.max(...metrics.byMonth.map(m=>m.count),1);
   return (
     <div style={{ paddingBottom:bp.isMobile?80:0 }}>
@@ -913,12 +929,12 @@ function HistoricoView({ requests, currentUser, openRequest, bp }) {
       <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"12px 14px", marginBottom:14 }}>
         <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
           <input value={filters.search} onChange={e=>sf("search",e.target.value)} placeholder="Buscar por título ou protocolo..." style={{ ...inp, flex:"1 1 180px" }} />
-          {bp.isMobile?<button onClick={()=>setShowFilters(v=>!v)} style={{ padding:"10px 12px", border:"1px solid #e2e8f0", borderRadius:8, background:"#fff", cursor:"pointer" }}><Icon name="filter" size={15} color="#64748b" /></button>:<><select value={filters.status} onChange={e=>sf("status",e.target.value)} style={{ ...inp, width:"auto" }}><option value="">Todos</option><option value="finalizada">Finalizada</option><option value="cancelada">Cancelada</option></select><select value={filters.team} onChange={e=>sf("team",e.target.value)} style={{ ...inp, width:"auto" }}><option value="">Todas equipes</option>{TEAMS.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select><input type="date" value={filters.dateFrom} onChange={e=>sf("dateFrom",e.target.value)} style={{ ...inp, width:"auto" }} /><input type="date" value={filters.dateTo} onChange={e=>sf("dateTo",e.target.value)} style={{ ...inp, width:"auto" }} /></>}
+          {bp.isMobile?<button onClick={()=>setShowFilters(v=>!v)} style={{ padding:"10px 12px", border:"1px solid #e2e8f0", borderRadius:8, background:"#fff", cursor:"pointer" }}><Icon name="filter" size={15} color="#64748b" /></button>:<><select value={filters.status} onChange={e=>sf("status",e.target.value)} style={{ ...inp, width:"auto" }}><option value="">Todos</option><option value="finalizada">Finalizada</option><option value="cancelada">Cancelada</option></select><select value={filters.team} onChange={e=>sf("team",e.target.value)} style={{ ...inp, width:"auto" }}><option value="">Todas equipes</option>{teams.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select><input type="date" value={filters.dateFrom} onChange={e=>sf("dateFrom",e.target.value)} style={{ ...inp, width:"auto" }} /><input type="date" value={filters.dateTo} onChange={e=>sf("dateTo",e.target.value)} style={{ ...inp, width:"auto" }} /></>}
           <span style={{ fontSize:12, color:"#94a3b8", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{filtered.length} registro{filtered.length!==1?"s":""}</span>
         </div>
-        {bp.isMobile&&showFilters&&<div style={{ marginTop:10, display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}><select value={filters.status} onChange={e=>sf("status",e.target.value)} style={{ ...inp, fontSize:13 }}><option value="">Todos</option><option value="finalizada">Finalizada</option><option value="cancelada">Cancelada</option></select><select value={filters.team} onChange={e=>sf("team",e.target.value)} style={{ ...inp, fontSize:13 }}><option value="">Todas equipes</option>{TEAMS.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></div>}
+        {bp.isMobile&&showFilters&&<div style={{ marginTop:10, display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}><select value={filters.status} onChange={e=>sf("status",e.target.value)} style={{ ...inp, fontSize:13 }}><option value="">Todos</option><option value="finalizada">Finalizada</option><option value="cancelada">Cancelada</option></select><select value={filters.team} onChange={e=>sf("team",e.target.value)} style={{ ...inp, fontSize:13 }}><option value="">Todas equipes</option>{teams.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></div>}
       </div>
-      {bp.isMobile||bp.isTablet?<div style={{ display:"flex", flexDirection:"column", gap:10 }}>{filtered.map(r=><RequestCard key={r.id} r={r} onClick={()=>openRequest(r.id)} />)}{!filtered.length&&<div style={{ background:"#fff", borderRadius:12, border:"2px dashed #e2e8f0", padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhum registro.</div>}</div>:<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"auto" }}><table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}><thead><tr style={{ background:"#f8fafc", borderBottom:"1px solid #e2e8f0" }}>{["Protocolo","Título","Equipe","Status","Responsável","Solicitante","Resolvido em"].map(h=><th key={h} style={{ padding:"12px 16px", textAlign:"left", fontWeight:600, color:"#374151", fontSize:12, whiteSpace:"nowrap", fontFamily:"'Outfit',sans-serif" }}>{h}</th>)}</tr></thead><tbody>{filtered.map(r=>{ const s=gs(r.status),t=gt(r.team_id),a=gu(r.assignee_id),req=gu(r.requester_id); const dur=r.created_at&&r.updated_at?Math.max(0,Math.round((new Date(r.updated_at)-new Date(r.created_at))/86400000)):null; return (<tr key={r.id} onClick={()=>openRequest(r.id)} style={{ borderBottom:"1px solid #f1f5f9", cursor:"pointer" }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><td style={{ padding:"11px 16px", fontFamily:"monospace", fontSize:12, color:"#1e3d6e", fontWeight:600, whiteSpace:"nowrap" }}>{r.protocol}</td><td style={{ padding:"11px 16px", fontWeight:500, maxWidth:200, fontFamily:"'DM Sans',sans-serif" }}><div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.title}</div></td><td style={{ padding:"11px 16px" }}>{t&&<span style={{ padding:"2px 8px", borderRadius:6, background:t.color+"20", color:t.color, fontWeight:600, fontSize:12 }}>{t.name}</span>}</td><td style={{ padding:"11px 16px" }}><span style={{ padding:"2px 8px", borderRadius:6, background:s.bg, color:s.color, fontWeight:600, fontSize:12 }}>{s.label}</span></td><td style={{ padding:"11px 16px" }}>{a?<div style={{ display:"flex", alignItems:"center", gap:6 }}><Avatar user={a} size={22} /><span style={{ fontFamily:"'DM Sans',sans-serif" }}>{a.full_name.split(" ")[0]}</span></div>:<span style={{ color:"#cbd5e1" }}>—</span>}</td><td style={{ padding:"11px 16px" }}>{req?<div style={{ display:"flex", alignItems:"center", gap:6 }}><Avatar user={req} size={22} /><span style={{ fontFamily:"'DM Sans',sans-serif" }}>{req.full_name.split(" ")[0]}</span></div>:<span style={{ color:"#cbd5e1" }}>—</span>}</td><td style={{ padding:"11px 16px", whiteSpace:"nowrap" }}><div style={{ fontSize:12, color:"#374151", fontFamily:"'DM Sans',sans-serif" }}>{fd(r.updated_at)}</div>{dur!==null&&<div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{dur}d de duração</div>}</td></tr>); })}{!filtered.length&&<tr><td colSpan={7} style={{ padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhum registro encontrado.</td></tr>}</tbody></table></div>}
+      {bp.isMobile||bp.isTablet?<div style={{ display:"flex", flexDirection:"column", gap:10 }}>{filtered.map(r=><RequestCard key={r.id} r={r} onClick={()=>openRequest(r.id)} teams={teams} users={users} />)}{!filtered.length&&<div style={{ background:"#fff", borderRadius:12, border:"2px dashed #e2e8f0", padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhum registro.</div>}</div>:<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"auto" }}><table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}><thead><tr style={{ background:"#f8fafc", borderBottom:"1px solid #e2e8f0" }}>{["Protocolo","Título","Equipe","Status","Responsável","Solicitante","Resolvido em"].map(h=><th key={h} style={{ padding:"12px 16px", textAlign:"left", fontWeight:600, color:"#374151", fontSize:12, whiteSpace:"nowrap", fontFamily:"'Outfit',sans-serif" }}>{h}</th>)}</tr></thead><tbody>{filtered.map(r=>{ const s=gs(r.status),t=teamById(teams,r.team_id),a=requestAssignee(r,users),req=requestRequester(r,users); const dur=r.created_at&&r.updated_at?Math.max(0,Math.round((new Date(r.updated_at)-new Date(r.created_at))/86400000)):null; return (<tr key={r.id} onClick={()=>openRequest(r.id)} style={{ borderBottom:"1px solid #f1f5f9", cursor:"pointer" }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><td style={{ padding:"11px 16px", fontFamily:"monospace", fontSize:12, color:"#1e3d6e", fontWeight:600, whiteSpace:"nowrap" }}>{r.protocol}</td><td style={{ padding:"11px 16px", fontWeight:500, maxWidth:200, fontFamily:"'DM Sans',sans-serif" }}><div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.title}</div></td><td style={{ padding:"11px 16px" }}>{t&&<span style={{ padding:"2px 8px", borderRadius:6, background:t.color+"20", color:t.color, fontWeight:600, fontSize:12 }}>{t.name}</span>}</td><td style={{ padding:"11px 16px" }}><span style={{ padding:"2px 8px", borderRadius:6, background:s.bg, color:s.color, fontWeight:600, fontSize:12 }}>{s.label}</span></td><td style={{ padding:"11px 16px" }}>{a?<div style={{ display:"flex", alignItems:"center", gap:6 }}><Avatar user={a} size={22} /><span style={{ fontFamily:"'DM Sans',sans-serif" }}>{a.full_name.split(" ")[0]}</span></div>:<span style={{ color:"#cbd5e1" }}>—</span>}</td><td style={{ padding:"11px 16px" }}>{req?<div style={{ display:"flex", alignItems:"center", gap:6 }}><Avatar user={req} size={22} /><span style={{ fontFamily:"'DM Sans',sans-serif" }}>{req.full_name.split(" ")[0]}</span></div>:<span style={{ color:"#cbd5e1" }}>—</span>}</td><td style={{ padding:"11px 16px", whiteSpace:"nowrap" }}><div style={{ fontSize:12, color:"#374151", fontFamily:"'DM Sans',sans-serif" }}>{fd(r.updated_at)}</div>{dur!==null&&<div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{dur}d de duração</div>}</td></tr>); })}{!filtered.length&&<tr><td colSpan={7} style={{ padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhum registro encontrado.</td></tr>}</tbody></table></div>}
     </div>
   );
 }
@@ -926,9 +942,20 @@ function HistoricoView({ requests, currentUser, openRequest, bp }) {
 // ─────────────────────────────────────────────
 // NEW REQUEST
 // ─────────────────────────────────────────────
-function NewRequestView({ currentUser, setView, setRequests, showToast, bp, teams, requestTypes, users, api, loadAllData }) {
+function NewRequestView({ currentUser, setView, showToast, bp, teams, requestTypes, users, requests, originView, api, loadAllData }) {
   const [form,setForm]=useState({title:"",description:"",team_id:"",type_id:"",priority:"media",assignee_id:"",client_name:""});
-  const types=requestTypes.filter(t=>t.team_id===form.team_id); const members=users.filter(u=>u.team_id===form.team_id&&u.role==="membro_equipe"); const back=currentUser.role==="solicitante"?"my-requests":"requests";
+  const types=requestTypes.filter(t=>t.team_id===form.team_id);
+  const members=users.filter(u=>(u.is_active!==false)&&isStaffRole(u.role)&&u.team_id===form.team_id);
+  const back=originView || (currentUser.role==="solicitante"?"my-requests":"requests");
+  const nextProtocol = () => {
+    const year = new Date().getFullYear();
+    const nums = requests
+      .map(r => String(r.protocol || "").match(/^APEX-(\d{4})-(\d+)$/))
+      .filter(m => m && Number(m[1]) === year)
+      .map(m => Number(m[2]));
+    const next = (nums.length ? Math.max(...nums) : 999) + 1;
+    return `APEX-${year}-${String(next).padStart(5, "0")}`;
+  };
   const create = async () => {
     if (!form.title || !form.team_id) {
       showToast("Preencha título e equipe.", "error");
@@ -936,6 +963,7 @@ function NewRequestView({ currentUser, setView, setRequests, showToast, bp, team
     }
     try {
       await api.createRequest({
+        protocol: nextProtocol(),
         title: form.title,
         description: form.description || null,
         team_id: form.team_id,
@@ -989,7 +1017,7 @@ function NewRequestView({ currentUser, setView, setRequests, showToast, bp, team
 // ADMIN USERS
 // ─────────────────────────────────────────────
 const EMPTY_FORM={full_name:"",email:"",role:"solicitante",team_id:"",whatsapp:"",is_active:true};
-function UserModal({ user, onSave, onClose, bp, availableRoles = ROLES }) {
+function UserModal({ user, onSave, onClose, bp, availableRoles = ROLES, teams = TEAMS }) {
   const isEdit=!!user; const [form,setForm]=useState(isEdit?{...user}:{...EMPTY_FORM}); const [errors,setErrors]=useState({});
   const needsTeam=form.role==="membro_equipe";
   const validate=()=>{ const e={}; if(!form.full_name.trim()) e.full_name="Nome obrigatório"; if(!form.email.trim()) e.email="E-mail obrigatório"; else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email="E-mail inválido"; if(needsTeam&&!form.team_id) e.team_id="Selecione a equipe"; return e; };
@@ -1026,7 +1054,7 @@ function UserModal({ user, onSave, onClose, bp, availableRoles = ROLES }) {
                 {availableRoles.map(r=><button key={r.key} onClick={()=>{set("role",r.key);if(r.key!=="membro_equipe") set("team_id","");}} style={{ padding:"10px 12px", borderRadius:10, border:`2px solid ${form.role===r.key?r.color:"#e2e8f0"}`, background:form.role===r.key?r.bg:"#fff", cursor:"pointer", textAlign:"left", transition:"all 0.15s" }}><div style={{ fontWeight:600, fontSize:13, color:form.role===r.key?r.color:"#374151", marginBottom:2, fontFamily:"'DM Sans',sans-serif" }}>{r.label}</div><div style={{ fontSize:11, color:"#94a3b8", lineHeight:1.3, fontFamily:"'DM Sans',sans-serif" }}>{r.desc}</div></button>)}
               </div>
             </Field>
-            {needsTeam&&<Field label="Equipe *"><div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>{TEAMS.map(t=><button key={t.id} onClick={()=>set("team_id",t.id)} style={{ padding:"10px 12px", borderRadius:10, border:`2px solid ${form.team_id===t.id?t.color:"#e2e8f0"}`, background:form.team_id===t.id?t.color+"15":"#fff", cursor:"pointer", display:"flex", alignItems:"center", gap:8 }}><div style={{ width:10, height:10, borderRadius:"50%", background:t.color, flexShrink:0 }} /><span style={{ fontSize:13, fontWeight:600, color:form.team_id===t.id?t.color:"#374151", fontFamily:"'DM Sans',sans-serif" }}>{t.name}</span></button>)}</div>{errors.team_id&&<span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block" }}>{errors.team_id}</span>}</Field>}
+            {needsTeam&&<Field label="Equipe *"><div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>{teams.map(t=><button key={t.id} onClick={()=>set("team_id",t.id)} style={{ padding:"10px 12px", borderRadius:10, border:`2px solid ${form.team_id===t.id?t.color:"#e2e8f0"}`, background:form.team_id===t.id?t.color+"15":"#fff", cursor:"pointer", display:"flex", alignItems:"center", gap:8 }}><div style={{ width:10, height:10, borderRadius:"50%", background:t.color, flexShrink:0 }} /><span style={{ fontSize:13, fontWeight:600, color:form.team_id===t.id?t.color:"#374151", fontFamily:"'DM Sans',sans-serif" }}>{t.name}</span></button>)}</div>{errors.team_id&&<span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block" }}>{errors.team_id}</span>}</Field>}
             <Field label="WhatsApp (opcional)"><div style={{ position:"relative" }}><Icon name="phone" size={15} color="#475569" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }} /><input value={form.whatsapp||""} onChange={e=>set("whatsapp",e.target.value.replace(/\D/g,""))} placeholder="5511999990000" type="tel" style={{ ...inp, paddingLeft:36 }} /></div><span style={{ fontSize:11, color:"#94a3b8", marginTop:4, display:"block", fontFamily:"'DM Sans',sans-serif" }}>DDI + DDD + número</span></Field>
             {isEdit&&<Field label="Status"><div style={{ display:"flex", gap:8 }}>{[{v:true,l:"Ativo",c:"#16a34a",b:"#f0fdf4"},{v:false,l:"Inativo",c:"#dc2626",b:"#fef2f2"}].map(opt=><button key={String(opt.v)} onClick={()=>set("is_active",opt.v)} style={{ flex:1, padding:"10px", borderRadius:8, border:`2px solid ${form.is_active===opt.v?opt.c:"#e2e8f0"}`, background:form.is_active===opt.v?opt.b:"#fff", cursor:"pointer", fontWeight:600, fontSize:13, color:form.is_active===opt.v?opt.c:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{opt.l}</button>)}</div></Field>}
           </div>
@@ -1040,7 +1068,7 @@ function UserModal({ user, onSave, onClose, bp, availableRoles = ROLES }) {
   );
 }
 
-function AdminUsers({ bp, showToast, users, setUsers, api, currentUser }) {
+function AdminUsers({ bp, showToast, users, setUsers, teams = TEAMS, api, currentUser }) {
   const [modal,setModal]=useState(null); const [search,setSearch]=useState(""); const [filterRole,setFilterRole]=useState(""); const [confirmDeact,setConfirmDeact]=useState(null);
   const visibleUsers = currentUser.role === "supervisor"
     ? users.filter(u => u.role !== "admin")
@@ -1056,7 +1084,9 @@ function AdminUsers({ bp, showToast, users, setUsers, api, currentUser }) {
         return;
       }
       const oldUser = users.find(u => u.id === data.id);
-      await api.upsertProfile(data);
+      const { avatar, ...profileData } = data;
+      if (avatar && !profileData.avatar_url) profileData.avatar_url = avatar;
+      await api.upsertProfile(profileData);
       if (currentUser.role === "supervisor") {
         await api.createAuditLog({
           actorId: currentUser.id,
@@ -1065,7 +1095,7 @@ function AdminUsers({ bp, showToast, users, setUsers, api, currentUser }) {
           entity: "profiles",
           entityId: data.id || data.email,
           oldValue: oldUser,
-          newValue: data,
+          newValue: profileData,
           description: `Supervisor ${data.id ? "alterou" : "criou"} usuário: ${data.full_name}`,
         });
       }
@@ -1123,17 +1153,17 @@ function AdminUsers({ bp, showToast, users, setUsers, api, currentUser }) {
       </div>
       {bp.isMobile?(
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-          {filtered.map(u=>{ const team=gt(u.team_id); const active=u.is_active!==false; return (<div key={u.id} style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"14px 16px", opacity:active?1:0.6 }}><div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:10 }}><div style={{ display:"flex", alignItems:"center", gap:12 }}><Avatar user={u} size={38} /><div><div style={{ fontWeight:600, fontSize:14, fontFamily:"'DM Sans',sans-serif" }}>{u.full_name}</div><div style={{ fontSize:12, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>{u.email}</div></div></div><div style={{ display:"flex", gap:6 }}><button onClick={()=>setModal(u)} style={{ background:"#f1f5f9", border:"none", borderRadius:6, padding:"6px 10px", cursor:"pointer", display:"flex", alignItems:"center" }}><Icon name="edit" size={13} color="#374151" /></button><button onClick={()=>active?setConfirmDeact(u):toggleActive(u)} style={{ background:active?"#fef2f2":"#f0fdf4", border:"none", borderRadius:6, padding:"6px 10px", cursor:"pointer" }}><Icon name={active?"x":"check"} size={13} color={active?"#dc2626":"#16a34a"} /></button></div></div><div style={{ display:"flex", flexWrap:"wrap", gap:6 }}><RoleBadge role={u.role} />{team&&<span style={{ padding:"2px 8px", borderRadius:6, background:team.color+"20", color:team.color, fontWeight:600, fontSize:12 }}>{team.name}</span>}<span style={{ padding:"2px 8px", borderRadius:6, background:active?"#f0fdf4":"#f1f5f9", color:active?"#16a34a":"#94a3b8", fontWeight:600, fontSize:12 }}>{active?"Ativo":"Inativo"}</span></div></div>); })}
+          {filtered.map(u=>{ const team=teamById(teams,u.team_id); const active=u.is_active!==false; return (<div key={u.id} style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"14px 16px", opacity:active?1:0.6 }}><div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:10 }}><div style={{ display:"flex", alignItems:"center", gap:12 }}><Avatar user={u} size={38} /><div><div style={{ fontWeight:600, fontSize:14, fontFamily:"'DM Sans',sans-serif" }}>{u.full_name}</div><div style={{ fontSize:12, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>{u.email}</div></div></div><div style={{ display:"flex", gap:6 }}><button onClick={()=>setModal(u)} style={{ background:"#f1f5f9", border:"none", borderRadius:6, padding:"6px 10px", cursor:"pointer", display:"flex", alignItems:"center" }}><Icon name="edit" size={13} color="#374151" /></button><button onClick={()=>active?setConfirmDeact(u):toggleActive(u)} style={{ background:active?"#fef2f2":"#f0fdf4", border:"none", borderRadius:6, padding:"6px 10px", cursor:"pointer" }}><Icon name={active?"x":"check"} size={13} color={active?"#dc2626":"#16a34a"} /></button></div></div><div style={{ display:"flex", flexWrap:"wrap", gap:6 }}><RoleBadge role={u.role} />{team&&<span style={{ padding:"2px 8px", borderRadius:6, background:team.color+"20", color:team.color, fontWeight:600, fontSize:12 }}>{team.name}</span>}<span style={{ padding:"2px 8px", borderRadius:6, background:active?"#f0fdf4":"#f1f5f9", color:active?"#16a34a":"#94a3b8", fontWeight:600, fontSize:12 }}>{active?"Ativo":"Inativo"}</span></div></div>); })}
         </div>
       ):(
         <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"auto" }}>
           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
             <thead><tr style={{ background:"#f8fafc", borderBottom:"1px solid #e2e8f0" }}>{["Usuário","E-mail","Perfil","Equipe","WhatsApp","Status","Ações"].map(h=><th key={h} style={{ padding:"12px 16px", textAlign:"left", fontWeight:600, color:"#374151", fontSize:12, whiteSpace:"nowrap", fontFamily:"'Outfit',sans-serif" }}>{h}</th>)}</tr></thead>
-            <tbody>{filtered.map(u=>{ const team=gt(u.team_id); const active=u.is_active!==false; return (<tr key={u.id} style={{ borderBottom:"1px solid #f1f5f9", opacity:active?1:0.55 }}><td style={{ padding:"12px 16px" }}><div style={{ display:"flex", alignItems:"center", gap:10 }}><Avatar user={u} size={30} /><span style={{ fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{u.full_name}</span></div></td><td style={{ padding:"12px 16px", color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>{u.email}</td><td style={{ padding:"12px 16px" }}><RoleBadge role={u.role} /></td><td style={{ padding:"12px 16px" }}>{team?<span style={{ padding:"2px 8px", borderRadius:6, background:team.color+"20", color:team.color, fontWeight:600, fontSize:12 }}>{team.name}</span>:<span style={{ color:"#cbd5e1" }}>—</span>}</td><td style={{ padding:"12px 16px", color:"#64748b", fontFamily:"monospace", fontSize:12 }}>{u.whatsapp||<span style={{ color:"#cbd5e1" }}>—</span>}</td><td style={{ padding:"12px 16px" }}><span style={{ padding:"2px 8px", borderRadius:6, background:active?"#f0fdf4":"#f1f5f9", color:active?"#16a34a":"#94a3b8", fontWeight:600, fontSize:12 }}>{active?"Ativo":"Inativo"}</span></td><td style={{ padding:"12px 16px" }}><div style={{ display:"flex", gap:6 }}><button onClick={()=>setModal(u)} style={{ padding:"5px 10px", border:"1px solid #e2e8f0", borderRadius:6, background:"#fff", cursor:"pointer", display:"flex", alignItems:"center", gap:4, fontSize:12, color:"#374151", fontFamily:"'DM Sans',sans-serif" }}><Icon name="edit" size={12} color="#374151" /> Editar</button><button onClick={()=>active?setConfirmDeact(u):toggleActive(u)} style={{ padding:"5px 10px", border:`1px solid ${active?"#fecaca":"#bbf7d0"}`, borderRadius:6, background:active?"#fef2f2":"#f0fdf4", cursor:"pointer", fontSize:12, color:active?"#dc2626":"#16a34a", fontFamily:"'DM Sans',sans-serif" }}>{active?"Desativar":"Reativar"}</button></div></td></tr>); })}{!filtered.length&&<tr><td colSpan={7} style={{ padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhum usuário encontrado.</td></tr>}</tbody>
+            <tbody>{filtered.map(u=>{ const team=teamById(teams,u.team_id); const active=u.is_active!==false; return (<tr key={u.id} style={{ borderBottom:"1px solid #f1f5f9", opacity:active?1:0.55 }}><td style={{ padding:"12px 16px" }}><div style={{ display:"flex", alignItems:"center", gap:10 }}><Avatar user={u} size={30} /><span style={{ fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{u.full_name}</span></div></td><td style={{ padding:"12px 16px", color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>{u.email}</td><td style={{ padding:"12px 16px" }}><RoleBadge role={u.role} /></td><td style={{ padding:"12px 16px" }}>{team?<span style={{ padding:"2px 8px", borderRadius:6, background:team.color+"20", color:team.color, fontWeight:600, fontSize:12 }}>{team.name}</span>:<span style={{ color:"#cbd5e1" }}>—</span>}</td><td style={{ padding:"12px 16px", color:"#64748b", fontFamily:"monospace", fontSize:12 }}>{u.whatsapp||<span style={{ color:"#cbd5e1" }}>—</span>}</td><td style={{ padding:"12px 16px" }}><span style={{ padding:"2px 8px", borderRadius:6, background:active?"#f0fdf4":"#f1f5f9", color:active?"#16a34a":"#94a3b8", fontWeight:600, fontSize:12 }}>{active?"Ativo":"Inativo"}</span></td><td style={{ padding:"12px 16px" }}><div style={{ display:"flex", gap:6 }}><button onClick={()=>setModal(u)} style={{ padding:"5px 10px", border:"1px solid #e2e8f0", borderRadius:6, background:"#fff", cursor:"pointer", display:"flex", alignItems:"center", gap:4, fontSize:12, color:"#374151", fontFamily:"'DM Sans',sans-serif" }}><Icon name="edit" size={12} color="#374151" /> Editar</button><button onClick={()=>active?setConfirmDeact(u):toggleActive(u)} style={{ padding:"5px 10px", border:`1px solid ${active?"#fecaca":"#bbf7d0"}`, borderRadius:6, background:active?"#fef2f2":"#f0fdf4", cursor:"pointer", fontSize:12, color:active?"#dc2626":"#16a34a", fontFamily:"'DM Sans',sans-serif" }}>{active?"Desativar":"Reativar"}</button></div></td></tr>); })}{!filtered.length&&<tr><td colSpan={7} style={{ padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhum usuário encontrado.</td></tr>}</tbody>
           </table>
         </div>
       )}
-      {modal&&<UserModal user={modal==="new"?null:modal} onSave={saveUser} onClose={()=>setModal(null)} bp={bp} availableRoles={availableRoles} />}
+      {modal&&<UserModal user={modal==="new"?null:modal} onSave={saveUser} onClose={()=>setModal(null)} bp={bp} availableRoles={availableRoles} teams={teams} />}
       {confirmDeact&&<div onClick={()=>setConfirmDeact(null)} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.5)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}><div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:14, padding:"24px", maxWidth:380, width:"100%", boxShadow:"0 24px 60px rgba(0,0,0,0.2)", textAlign:"center" }}><Icon name="alertCircle" size={32} color="#dc2626" style={{ marginBottom:12 }} /><h3 style={{ fontWeight:600, fontSize:16, marginBottom:8, fontFamily:"'Outfit',sans-serif" }}>Desativar usuário?</h3><p style={{ fontSize:13, color:"#64748b", lineHeight:1.6, marginBottom:20, fontFamily:"'DM Sans',sans-serif" }}><strong>{confirmDeact.full_name}</strong> não poderá mais acessar o sistema.</p><div style={{ display:"flex", gap:10 }}><button onClick={()=>setConfirmDeact(null)} style={{ flex:1, padding:"10px", border:"1px solid #e2e8f0", borderRadius:8, background:"#fff", cursor:"pointer", fontSize:13, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>Cancelar</button><button onClick={()=>toggleActive(confirmDeact)} style={{ flex:1, padding:"10px", background:"#ef4444", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>Desativar</button></div></div></div>}
     </div>
   );
@@ -1461,6 +1491,7 @@ export default function ApexSolicitacoes() {
   const [view, setView] = useState("dashboard");
   const [selectedId, setSelectedId] = useState(null);
   const [detailFrom, setDetailFrom] = useState("requests");
+  const [newFrom, setNewFrom] = useState("requests");
   const [requests, setRequests] = useState([]);
   const [users, setUsers] = useState([]);
   const [teams, setTeams] = useState(TEAMS);
@@ -1493,6 +1524,7 @@ export default function ApexSolicitacoes() {
             if (profile && profile.is_active) {
               setCurrentUser(profile);
               setLoggedIn(true);
+              setView(profile.role === "solicitante" ? "my-requests" : "dashboard");
               await loadAllData();
             } else if (profile && !profile.is_active) {
               await api.signOut();
@@ -1538,6 +1570,7 @@ export default function ApexSolicitacoes() {
             if (profile && profile.is_active) {
               setCurrentUser(profile);
               setLoggedIn(true);
+              setView(profile.role === "solicitante" ? "my-requests" : "dashboard");
               loadAllData();
             } else if (profile && !profile.is_active) {
               await api.signOut();
@@ -1578,6 +1611,25 @@ export default function ApexSolicitacoes() {
     if (bp.isMobile || bp.isTablet) setSidebarOpen(false);
     else setSidebarOpen(true);
   }, [bp.isMobile, bp.isTablet]);
+
+  useEffect(() => {
+    if (!loggedIn || !currentUser) return;
+    const staffAdminViews = ["admin-users", "admin-teams", "admin-types"];
+    const allowed = currentUser.role === "solicitante"
+      ? ["my-requests", "new", "detail"]
+      : [
+          "dashboard",
+          "requests",
+          "historico",
+          "new",
+          "detail",
+          ...(currentUser.role === "admin" || currentUser.role === "supervisor" ? staffAdminViews : []),
+          ...(currentUser.role === "admin" ? ["auditoria"] : []),
+        ];
+    if (!allowed.includes(view)) {
+      setView(currentUser.role === "solicitante" ? "my-requests" : "dashboard");
+    }
+  }, [loggedIn, currentUser, view]);
 
   const loadAllData = async () => {
     setDataLoading(true);
@@ -1690,14 +1742,17 @@ export default function ApexSolicitacoes() {
       const profile = await api.getProfile(data.session.user.id);
 
       if (!profile) {
+        await api.signOut();
         throw new Error('Perfil não encontrado. Contate o administrador.');
       }
       if (!profile.is_active) {
+        await api.signOut();
         throw new Error('Usuário desativado. Contate o administrador.');
       }
 
       setCurrentUser(profile);
       setLoggedIn(true);
+      setView(profile.role === "solicitante" ? "my-requests" : "dashboard");
       loadAllData();
     } catch (err) {
       throw err;
@@ -1721,12 +1776,16 @@ export default function ApexSolicitacoes() {
 
   const selectedRequest = requests.find(r => r.id === selectedId);
   const isSolicitante = currentUser?.role === "solicitante";
+  const navigate = (nextView) => {
+    if (nextView === "new") setNewFrom(view);
+    setView(nextView);
+  };
   const sharedProps = {
     requests,
     setRequests,
     currentUser,
     openRequest: (id) => openRequest(id, view),
-    setView,
+    setView: navigate,
     bp,
     users,
     teams,
@@ -1792,7 +1851,7 @@ export default function ApexSolicitacoes() {
           <Sidebar
             currentUser={currentUser}
             view={view}
-            setView={setView}
+            setView={navigate}
             open={sidebarOpen}
             setOpen={setSidebarOpen}
             bp={bp}
@@ -1842,12 +1901,13 @@ export default function ApexSolicitacoes() {
                   <NewRequestView
                     currentUser={currentUser}
                     setView={setView}
-                    setRequests={setRequests}
                     showToast={showToast}
                     bp={bp}
                     teams={teams}
                     requestTypes={requestTypes}
                     users={users}
+                    requests={requests}
+                    originView={newFrom}
                     api={api}
                     loadAllData={loadAllData}
                   />
@@ -1867,17 +1927,18 @@ export default function ApexSolicitacoes() {
                     api={api}
                   />
                 )}
-                {view === "admin-users" && (
+                {view === "admin-users" && ["admin","supervisor"].includes(currentUser.role) && (
                   <AdminUsers
                     bp={bp}
                     showToast={showToast}
                     users={users}
                     setUsers={setUsers}
+                    teams={teams}
                     api={api}
                     currentUser={currentUser}
                   />
                 )}
-                {view === "admin-teams" && (
+                {view === "admin-teams" && ["admin","supervisor"].includes(currentUser.role) && (
                   <AdminTeams
                     bp={bp}
                     showToast={showToast}
@@ -1887,7 +1948,7 @@ export default function ApexSolicitacoes() {
                     currentUser={currentUser}
                   />
                 )}
-                {view === "admin-types" && (
+                {view === "admin-types" && ["admin","supervisor"].includes(currentUser.role) && (
                   <AdminTypes
                     bp={bp}
                     showToast={showToast}
@@ -1910,7 +1971,7 @@ export default function ApexSolicitacoes() {
           </main>
         </div>
         {bp.isMobile && (
-          <BottomNav currentUser={currentUser} view={view} setView={setView} />
+          <BottomNav currentUser={currentUser} view={view} setView={navigate} />
         )}
         {toast && (
           <div style={{
