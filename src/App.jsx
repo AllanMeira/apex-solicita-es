@@ -1,6 +1,25 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { supabase } from "./lib/supabase";
 import * as api from "./lib/api";
+import {
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  XAxis, YAxis, Tooltip, ResponsiveContainer,
+} from "recharts";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCorners,
+  useDroppable,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // ─────────────────────────────────────────────
 // LOGO SVG — montanha low-poly Apex
@@ -841,26 +860,200 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
 // ─────────────────────────────────────────────
 // DASHBOARD
 // ─────────────────────────────────────────────
-function Dashboard({ requests, currentUser, openRequest, bp, teams = TEAMS, users = USERS }) {
-  const vis = ["admin","gestor","supervisor"].includes(currentUser.role)?requests:requests.filter(r=>r.team_id===currentUser.team_id||r.assignee_id===currentUser.id);
-  const stats=[{label:"Total",v:vis.length,color:"#1e3d6e"},{label:"Novas",v:vis.filter(r=>r.status==="nova").length,color:"#d97706"},{label:"Andamento",v:vis.filter(r=>r.status==="em_andamento").length,color:"#2563eb"},{label:"Críticas",v:vis.filter(r=>r.priority==="critica"&&!["finalizada","cancelada"].includes(r.status)).length,color:"#dc2626"},{label:"Finalizadas",v:vis.filter(r=>r.status==="finalizada").length,color:"#16a34a"}];
-  const recent=[...vis].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,5);
-  const criticals=vis.filter(r=>r.priority==="critica"&&!["finalizada","cancelada"].includes(r.status));
+function Dashboard({ requests, currentUser, openRequest, bp, users = [], teams = [] }) {
+  const isAdmin = ["admin","supervisor","gestor"].includes(currentUser.role);
+  const vis = isAdmin
+    ? requests
+    : requests.filter(r => r.team_id === currentUser.team_id || r.assignee_id === currentUser.id);
+
+  const active = vis.filter(r => !["finalizada","cancelada"].includes(r.status));
+  const done = vis.filter(r => r.status === "finalizada");
+  const critical = vis.filter(r => r.priority === "critica" && !["finalizada","cancelada"].includes(r.status));
+
+  const stats = [
+    { label:"Total", value: vis.length, color:"#1e3d6e" },
+    { label:"Novas", value: vis.filter(r=>r.status==="nova").length, color:"#d97706" },
+    { label:"Andamento", value: vis.filter(r=>r.status==="em_andamento").length, color:"#2563eb" },
+    { label:"Críticas", value: critical.length, color:"#dc2626" },
+    { label:"Finalizadas", value: done.length, color:"#16a34a" },
+  ];
+
+  const byTeam = teams.map(t => ({
+    name: t.name,
+    Abertas: active.filter(r => r.team_id === t.id).length,
+    Finalizadas: done.filter(r => r.team_id === t.id).length,
+    color: t.color,
+  })).filter(t => t.Abertas + t.Finalizadas > 0);
+
+  const now = new Date();
+  const byMonth = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+    const monthReqs = vis.filter(r => {
+      const rd = new Date(r.created_at);
+      return rd.getMonth() === d.getMonth() && rd.getFullYear() === d.getFullYear();
+    });
+    return {
+      name: d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }),
+      Abertas: monthReqs.filter(r => !["finalizada","cancelada"].includes(r.status)).length,
+      Finalizadas: monthReqs.filter(r => r.status === "finalizada").length,
+      Total: monthReqs.length,
+    };
+  });
+
+  const byStatus = Object.entries(
+    vis.reduce((acc, r) => {
+      acc[r.status] = (acc[r.status] || 0) + 1;
+      return acc;
+    }, {})
+  ).map(([key, value]) => {
+    const status = gs(key);
+    return { name: status.label || key, value, color: status.color || "#94a3b8" };
+  }).filter(s => s.value > 0);
+
+  const topAssignees = Object.entries(
+    done.reduce((acc, r) => {
+      if (r.assignee_id) acc[r.assignee_id] = (acc[r.assignee_id] || 0) + 1;
+      return acc;
+    }, {})
+  ).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([id,count]) => ({
+    user: users.find(u => u.id === id),
+    count,
+  })).filter(a => a.user);
+
+  const avgResolution = (() => {
+    const resolved = done.filter(r => r.created_at && r.updated_at);
+    if (!resolved.length) return null;
+    const avg = resolved.reduce((acc, r) =>
+      acc + Math.max(0, (new Date(r.updated_at) - new Date(r.created_at)) / 86400000), 0
+    ) / resolved.length;
+    return avg.toFixed(1);
+  })();
+
+  const recentActivity = [...vis].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,5);
+
   return (
-    <div style={{ paddingBottom:bp.isMobile?80:0 }}>
-      <div style={{ display:"grid", gridTemplateColumns:bp.isMobile?"repeat(2,1fr)":bp.isTablet?"repeat(3,1fr)":"repeat(5,1fr)", gap:12, marginBottom:22 }}>
-        {stats.map(s=><div key={s.label} style={{ background:"#fff", borderRadius:12, padding:"14px 16px", border:"1px solid #e2e8f0" }}><div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}><span style={{ fontSize:11, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>{s.label}</span></div><div style={{ fontSize:bp.isMobile?22:26, fontWeight:700, color:s.v>0?s.color:"#94a3b8", fontFamily:"'Outfit',sans-serif" }}>{s.v}</div></div>)}
+    <div style={{ paddingBottom: bp.isMobile ? 80 : 0 }}>
+      <div style={{ display:"grid", gridTemplateColumns:bp.isMobile?"repeat(2,1fr)":"repeat(5,1fr)", gap:12, marginBottom:20 }}>
+        {stats.map(s => (
+          <div key={s.label} style={{ background:"#fff", borderRadius:12, padding:"14px 16px", border:"1px solid #e2e8f0" }}>
+            <div style={{ fontSize:11, color:"#64748b", marginBottom:6, fontFamily:"'DM Sans',sans-serif" }}>{s.label}</div>
+            <div style={{ fontSize:bp.isMobile?24:28, fontWeight:700, color:s.value>0?s.color:"#94a3b8", fontFamily:"'Outfit',sans-serif" }}>{s.value}</div>
+          </div>
+        ))}
       </div>
+
+      {isAdmin && vis.length > 0 && (
+        <div style={{ display:"grid", gridTemplateColumns:bp.isDesktop?"1fr 1fr":"1fr", gap:16, marginBottom:20 }}>
+          <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"18px 20px" }}>
+            <div style={{ fontWeight:600, fontSize:13, marginBottom:16, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Volume por Mês</div>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={byMonth}>
+                <XAxis dataKey="name" tick={{ fontSize:11, fill:"#94a3b8" }} />
+                <YAxis tick={{ fontSize:11, fill:"#94a3b8" }} allowDecimals={false} />
+                <Tooltip contentStyle={{ fontSize:12, borderRadius:8, border:"1px solid #e2e8f0" }} />
+                <Line type="monotone" dataKey="Total" stroke="#1e3d6e" strokeWidth={2} dot={{ r:4 }} name="Total" />
+                <Line type="monotone" dataKey="Finalizadas" stroke="#16a34a" strokeWidth={2} dot={{ r:4 }} name="Finalizadas" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          {byTeam.length > 0 && (
+            <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"18px 20px" }}>
+              <div style={{ fontWeight:600, fontSize:13, marginBottom:16, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Chamados por Equipe</div>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={byTeam} barSize={20}>
+                  <XAxis dataKey="name" tick={{ fontSize:11, fill:"#94a3b8" }} />
+                  <YAxis tick={{ fontSize:11, fill:"#94a3b8" }} allowDecimals={false} />
+                  <Tooltip contentStyle={{ fontSize:12, borderRadius:8, border:"1px solid #e2e8f0" }} />
+                  <Bar dataKey="Abertas" fill="#3b6ea8" radius={[4,4,0,0]} />
+                  <Bar dataKey="Finalizadas" fill="#16a34a" radius={[4,4,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {byStatus.length > 0 && (
+            <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"18px 20px" }}>
+              <div style={{ fontWeight:600, fontSize:13, marginBottom:16, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Distribuição por Status</div>
+              <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+                <ResponsiveContainer width="50%" height={160}>
+                  <PieChart>
+                    <Pie data={byStatus} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="value" paddingAngle={2}>
+                      {byStatus.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ fontSize:12, borderRadius:8 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div style={{ flex:1 }}>
+                  {byStatus.map((s, i) => (
+                    <div key={i} style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                      <div style={{ width:10, height:10, borderRadius:2, background:s.color, flexShrink:0 }} />
+                      <span style={{ fontSize:11, color:"#374151", flex:1, fontFamily:"'DM Sans',sans-serif" }}>{s.name}</span>
+                      <span style={{ fontSize:11, fontWeight:600, color:"#374151", fontFamily:"'DM Sans',sans-serif" }}>{s.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"18px 20px" }}>
+            <div style={{ fontWeight:600, fontSize:13, marginBottom:16, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Top Responsáveis</div>
+            {topAssignees.length > 0 ? (
+              <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                {topAssignees.map((a, i) => (
+                  <div key={a.user.id} style={{ display:"flex", alignItems:"center", gap:12 }}>
+                    <div style={{ width:24, height:24, borderRadius:"50%", background:i===0?"#f59e0b":i===1?"#94a3b8":"#cd7c2f", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:11, fontWeight:700, flexShrink:0 }}>{i+1}</div>
+                    <Avatar user={a.user} size={28} />
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{a.user.full_name.split(" ")[0]}</div>
+                      <div style={{ fontSize:11, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>{a.count} finalizado{a.count!==1?"s":""}</div>
+                    </div>
+                    <div style={{ background:"#f0fdf4", color:"#16a34a", padding:"3px 10px", borderRadius:20, fontSize:12, fontWeight:700, fontFamily:"'DM Sans',sans-serif" }}>{a.count}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ color:"#94a3b8", fontSize:13, textAlign:"center", padding:"20px 0", fontFamily:"'DM Sans',sans-serif" }}>Nenhum chamado finalizado ainda.</div>
+            )}
+            {avgResolution && (
+              <div style={{ marginTop:16, paddingTop:16, borderTop:"1px solid #f1f5f9", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <span style={{ fontSize:12, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>Tempo médio de resolução</span>
+                <span style={{ fontSize:14, fontWeight:700, color:"#1e3d6e", fontFamily:"'Outfit',sans-serif" }}>{avgResolution} dias</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div style={{ display:"grid", gridTemplateColumns:bp.isDesktop?"1fr 1fr":"1fr", gap:16 }}>
         <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"hidden" }}>
           <div style={{ padding:"14px 18px", borderBottom:"1px solid #f1f5f9", fontWeight:600, fontSize:14, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Atividade Recente</div>
-          {recent.map(r=>{ const s=gs(r.status),t=teamById(teams,r.team_id); return (<div key={r.id} onClick={()=>openRequest(r.id)} style={{ padding:"12px 18px", borderBottom:"1px solid #f8fafc", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{ width:3, height:32, borderRadius:2, background:t?.color||"#e2e8f0", flexShrink:0 }} /><div style={{ flex:1, overflow:"hidden" }}><div style={{ fontWeight:600, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{r.protocol} · {fd(r.updated_at)}</div></div><Badge label={s.label} color={s.color} bg={s.bg} small /></div>); })}
-          {!recent.length&&<div style={{ padding:24, textAlign:"center", color:"#94a3b8", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>Nenhuma atividade.</div>}
+          {recentActivity.map(r => { const s=gs(r.status), t=teamById(teams,r.team_id); return (
+            <div key={r.id} onClick={()=>openRequest(r.id)} style={{ padding:"12px 18px", borderBottom:"1px solid #f8fafc", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+              <div style={{ width:3, height:32, borderRadius:2, background:t?.color||"#e2e8f0", flexShrink:0 }} />
+              <div style={{ flex:1, overflow:"hidden" }}>
+                <div style={{ fontWeight:600, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div>
+                <div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{r.protocol} · {fd(r.updated_at)}</div>
+              </div>
+              <Badge label={s.label} color={s.color} bg={s.bg} small />
+            </div>
+          ); })}
+          {!recentActivity.length&&<div style={{ padding:24, textAlign:"center", color:"#94a3b8", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>Nenhuma atividade.</div>}
         </div>
+
         <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"hidden" }}>
           <div style={{ padding:"14px 18px", borderBottom:"1px solid #f1f5f9", fontWeight:600, fontSize:14, fontFamily:"'Outfit',sans-serif", color:"#dc2626", display:"flex", alignItems:"center", gap:8 }}><Icon name="alertCircle" size={16} color="#dc2626" /> Críticas Abertas</div>
-          {criticals.map(r=>{ const a=requestAssignee(r,users); return (<div key={r.id} onClick={()=>openRequest(r.id)} style={{ padding:"12px 18px", borderBottom:"1px solid #f8fafc", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><div style={{ flex:1 }}><div style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{a?"Resp: "+a.full_name:"Sem responsável"}</div></div><Badge label={gs(r.status).label} color={gs(r.status).color} bg={gs(r.status).bg} small /></div>); })}
-          {!criticals.length&&<div style={{ padding:24, textAlign:"center", color:"#94a3b8", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>Nenhuma crítica aberta.</div>}
+          {critical.map(r => { const a=requestAssignee(r,users); return (
+            <div key={r.id} onClick={()=>openRequest(r.id)} style={{ padding:"12px 18px", borderBottom:"1px solid #f8fafc", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div>
+                <div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{a?"Resp: "+a.full_name.split(" ")[0]:"Sem responsável"}</div>
+              </div>
+              <Badge label={gs(r.status).label} color={gs(r.status).color} bg={gs(r.status).bg} small />
+            </div>
+          ); })}
+          {!critical.length&&<div style={{ padding:24, textAlign:"center", color:"#94a3b8", fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>Nenhuma crítica aberta.</div>}
         </div>
       </div>
     </div>
@@ -873,7 +1066,7 @@ function Dashboard({ requests, currentUser, openRequest, bp, teams = TEAMS, user
 const QUICK_FILTERS=[{key:"todos",label:"Todos",filter:()=>true},{key:"meus",label:"Meus",filter:(r,uid)=>r.assignee_id===uid},{key:"sem_resp",label:"Sem responsável",filter:r=>!r.assignee_id},{key:"criticos",label:"Críticos",filter:r=>r.priority==="critica"},{key:"aguardando",label:"Aguardando",filter:r=>["aguardando_solicitante","aguardando_terceiro"].includes(r.status)}];
 function getMonthRange(){const now=new Date();return{from:new Date(now.getFullYear(),now.getMonth(),1).toISOString().split("T")[0],to:new Date(now.getFullYear(),now.getMonth()+1,0).toISOString().split("T")[0]};}
 
-function RequestsView({ requests, currentUser, openRequest, setView, bp, teams = TEAMS, users = USERS }) {
+function RequestsView({ requests, currentUser, openRequest, setView, bp, teams = TEAMS, users = USERS, updateRequest }) {
   const [search,setSearch]=useState(""); const [teamF,setTeamF]=useState(""); const [priorityF,setPriorityF]=useState(""); const [dateFrom,setDateFrom]=useState(getMonthRange().from); const [dateTo,setDateTo]=useState(getMonthRange().to); const [quick,setQuick]=useState("todos"); const [showFin,setShowFin]=useState(false); const [showFilters,setShowFilters]=useState(false); const [mode,setMode]=useState(bp.isMobile?"list":"kanban");
   const scopedRequests=useMemo(()=>{let r=requests; if(currentUser.role==="membro_equipe") r=r.filter(x=>x.team_id===currentUser.team_id||x.assignee_id===currentUser.id); if(dateFrom) r=r.filter(x=>x.created_at>=dateFrom); if(dateTo) r=r.filter(x=>x.created_at<=dateTo+"T23:59:59"); if(teamF) r=r.filter(x=>x.team_id===teamF); if(priorityF) r=r.filter(x=>x.priority===priorityF); if(search) r=r.filter(x=>x.title.toLowerCase().includes(search.toLowerCase())||x.protocol.includes(search)); return r;},[requests,currentUser,dateFrom,dateTo,teamF,priorityF,search]);
   const base=useMemo(()=>{let r=scopedRequests; const qf=QUICK_FILTERS.find(f=>f.key===quick); if(qf) r=r.filter(x=>qf.filter(x,currentUser.id)); return r;},[scopedRequests,quick,currentUser.id]);
@@ -908,30 +1101,131 @@ function RequestsView({ requests, currentUser, openRequest, setView, bp, teams =
           {mode==="kanban"&&<button onClick={()=>setShowFin(v=>!v)} style={{ padding:"5px 12px", borderRadius:20, border:`1.5px solid ${showFin?"#16a34a":"#e2e8f0"}`, background:showFin?"#f0fdf4":"#fff", color:showFin?"#16a34a":"#64748b", cursor:"pointer", fontSize:12, fontWeight:showFin?600:400, marginLeft:"auto", fontFamily:"'DM Sans',sans-serif" }}>{showFin?"Ocultar finalizados":"Mostrar finalizados"}</button>}
         </div>
       </div>
-      {mode==="kanban"&&!bp.isMobile&&<KanbanView requests={base} openRequest={openRequest} kanbanCols={kanbanCols} teams={teams} users={users} />}
+      {mode==="kanban"&&!bp.isMobile&&<KanbanView requests={base} openRequest={openRequest} kanbanCols={kanbanCols} updateRequest={updateRequest} teams={teams} users={users} />}
       {mode==="list"&&<div style={{ display:"flex", flexDirection:"column", gap:10 }}>{base.map(r=><RequestCard key={r.id} r={r} onClick={()=>openRequest(r.id)} teams={teams} users={users} />)}{!base.length&&<div style={{ background:"#fff", borderRadius:12, border:"2px dashed #e2e8f0", padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhuma solicitação encontrada.</div>}</div>}
       {mode==="table"&&!bp.isMobile&&<TableView requests={base} openRequest={openRequest} teams={teams} users={users} />}
     </div>
   );
 }
 
-function KanbanView({ requests, openRequest, kanbanCols, teams = TEAMS, users = USERS }) {
+function DraggableCard({ r, openRequest, teams, users }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: r.id });
+  const t = teamById(teams, r.team_id);
+  const p = gp(r.priority);
+  const a = requestAssignee(r, users);
+
   return (
-    <div style={{ display:"flex", gap:12, overflowX:"auto", paddingBottom:16, alignItems:"flex-start" }}>
-      {kanbanCols.map(col=>{ const cr=requests.filter(r=>r.status===col.key); const isClosed=["finalizada","cancelada"].includes(col.key); return (
-        <div key={col.key} style={{ minWidth:220, width:220, flexShrink:0, opacity:isClosed?0.85:1 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, padding:"6px 8px", borderRadius:8, background:isClosed?"#f8fafc":"transparent" }}>
-            <div style={{ width:9, height:9, borderRadius:"50%", background:col.color, flexShrink:0 }} />
-            <span style={{ fontWeight:600, fontSize:12, color:"#374151", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{col.label}</span>
-            <span style={{ background:isClosed?col.bg:"#f1f5f9", color:isClosed?col.color:"#64748b", borderRadius:20, padding:"2px 8px", fontSize:11, fontWeight:700, flexShrink:0, fontFamily:"'DM Sans',sans-serif" }}>{cr.length}</span>
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+        cursor: "grab",
+      }}
+      {...attributes}
+      {...listeners}
+      onClick={() => {
+        if (!isDragging) openRequest(r.id);
+      }}
+    >
+      <div style={{ background:"#fff", borderRadius:10, border:"1px solid #e2e8f0", padding:"11px 13px", borderLeft:`3px solid ${t?.color||"#e2e8f0"}`, marginBottom:8, boxShadow:isDragging?"0 8px 24px rgba(0,0,0,0.12)":"none" }}>
+        <div style={{ fontSize:10, color:"#94a3b8", marginBottom:3, fontFamily:"monospace" }}>{r.protocol}</div>
+        <div style={{ fontWeight:600, fontSize:13, lineHeight:1.4, marginBottom:8, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ display:"flex", alignItems:"center" }}>
+            <span style={{ width:7, height:7, borderRadius:"50%", background:p.color, marginRight:5, flexShrink:0, display:"inline-block" }} />
+            <span style={{ fontSize:11, color:p.color, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{p.label}</span>
           </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {cr.map(r=>{ const t=teamById(teams,r.team_id),p=gp(r.priority),a=requestAssignee(r,users); return (<div key={r.id} onClick={()=>openRequest(r.id)} style={{ background:"#fff", borderRadius:10, border:"1px solid #e2e8f0", padding:"11px 13px", cursor:"pointer", borderLeft:`3px solid ${t?.color||"#e2e8f0"}`, opacity:isClosed?0.75:1, transition:"all 0.15s" }} onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)";e.currentTarget.style.opacity="1";e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.opacity=isClosed?"0.75":"1";e.currentTarget.style.transform="none";}}><div style={{ fontSize:10, color:"#94a3b8", marginBottom:3, fontFamily:"monospace" }}>{r.protocol}</div><div style={{ fontWeight:600, fontSize:13, lineHeight:1.4, marginBottom:8, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div><div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}><div style={{ display:"flex", alignItems:"center" }}><PriorityDot priority={r.priority} /><span style={{ fontSize:11, color:p.color, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{p.label}</span></div>{a?<Avatar user={a} size={20} />:<span style={{ fontSize:11, color:"#cbd5e1" }}>—</span>}</div>{isClosed&&<div style={{ marginTop:6, fontSize:11, color:col.color, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{r.status==="finalizada"?"Finalizado "+fd(r.updated_at):"Cancelado"}</div>}</div>); })}
-            {!cr.length&&<div style={{ background:"#f8fafc", border:"2px dashed #e2e8f0", borderRadius:10, padding:"18px", textAlign:"center", color:"#cbd5e1", fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>Vazio</div>}
-          </div>
+          {a ? <Avatar user={a} size={20} /> : <span style={{ fontSize:11, color:"#cbd5e1" }}>—</span>}
         </div>
-      ); })}
+      </div>
     </div>
+  );
+}
+
+function DroppableColumn({ col, activeId, children }) {
+  const { setNodeRef, isOver } = useDroppable({ id: col.key });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        minHeight:80,
+        borderRadius:10,
+        background:isOver ? "rgba(59,110,168,0.08)" : activeId ? "rgba(59,110,168,0.04)" : "transparent",
+        border:activeId ? "2px dashed rgba(59,110,168,0.2)" : "2px solid transparent",
+        padding:4,
+        transition:"all 0.15s",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function KanbanView({ requests, openRequest, kanbanCols, updateRequest, teams = TEAMS, users = USERS }) {
+  const [activeId, setActiveId] = useState(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint:{ distance:8 } }));
+  const activeRequest = activeId ? requests.find(r => r.id === activeId) : null;
+
+  const handleDragEnd = async ({ active, over }) => {
+    setActiveId(null);
+    if (!over || active.id === over.id) return;
+
+    const overRequest = requests.find(r => r.id === over.id);
+    const targetStatus = kanbanCols.find(col => col.key === over.id)?.key || overRequest?.status;
+    const request = requests.find(r => r.id === active.id);
+    if (targetStatus && request && request.status !== targetStatus && typeof updateRequest === "function") {
+      await updateRequest(active.id, { status: targetStatus });
+    }
+  };
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={event => setActiveId(event.active.id)}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveId(null)}
+    >
+      <div style={{ display:"flex", gap:12, overflowX:"auto", paddingBottom:16, alignItems:"flex-start" }}>
+        {kanbanCols.map(col => {
+          const colRequests = requests.filter(r => r.status === col.key);
+          const isClosed = ["finalizada","cancelada"].includes(col.key);
+          return (
+            <div key={col.key} style={{ minWidth:220, width:220, flexShrink:0, opacity:isClosed?0.85:1 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, padding:"6px 8px", borderRadius:8, background:isClosed?"#f8fafc":"transparent" }}>
+                <div style={{ width:9, height:9, borderRadius:"50%", background:col.color, flexShrink:0 }} />
+                <span style={{ fontWeight:600, fontSize:12, color:"#374151", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{col.label}</span>
+                <span style={{ background:col.bg, color:col.color, borderRadius:20, padding:"2px 8px", fontSize:11, fontWeight:700, fontFamily:"'DM Sans',sans-serif" }}>{colRequests.length}</span>
+              </div>
+
+              <SortableContext items={colRequests.map(r => r.id)} strategy={verticalListSortingStrategy}>
+                <DroppableColumn col={col} activeId={activeId}>
+                  {colRequests.map(r => (
+                    <DraggableCard key={r.id} r={r} openRequest={openRequest} teams={teams} users={users} />
+                  ))}
+                  {colRequests.length === 0 && (
+                    <div style={{ padding:"18px", textAlign:"center", color:"#cbd5e1", fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>
+                      {activeId ? "Soltar aqui" : "Vazio"}
+                    </div>
+                  )}
+                </DroppableColumn>
+              </SortableContext>
+            </div>
+          );
+        })}
+      </div>
+
+      <DragOverlay>
+        {activeRequest ? (
+          <div style={{ background:"#fff", borderRadius:10, border:"1px solid #e2e8f0", padding:"11px 13px", borderLeft:`3px solid ${teamById(teams,activeRequest.team_id)?.color||"#e2e8f0"}`, boxShadow:"0 16px 40px rgba(0,0,0,0.15)", width:220, cursor:"grabbing", fontFamily:"'DM Sans',sans-serif" }}>
+            <div style={{ fontSize:10, color:"#94a3b8", marginBottom:3, fontFamily:"monospace" }}>{activeRequest.protocol}</div>
+            <div style={{ fontWeight:600, fontSize:13, lineHeight:1.4 }}>{activeRequest.title}</div>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }
 
@@ -1865,6 +2159,7 @@ export default function ApexSolicitacoes() {
     users,
     teams,
     requestTypes,
+    updateRequest: updateRequestFn,
     api,
     showToast,
     loadAllData,
