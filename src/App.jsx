@@ -658,7 +658,19 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
   });
   const backView = isSolicitante?"my-requests":(detailFrom||"requests");
 
-  const openWA = () => { if(!assignee?.whatsapp){showToast("Responsável sem WhatsApp cadastrado.","error");return;} const msg=encodeURIComponent(`Olá ${assignee.full_name.split(" ")[0]}! Atualização sobre a solicitação *${request.protocol}* — *${request.title}*?`); window.open(`https://wa.me/${assignee.whatsapp}?text=${msg}`,"_blank"); };
+  const openWA = () => {
+    if (!assignee?.whatsapp) {
+      showToast("Responsável sem WhatsApp cadastrado.", "error");
+      return;
+    }
+    const number = assignee.whatsapp.replace(/\D/g, "");
+    const msg = encodeURIComponent(
+      `Olá ${assignee.full_name.split(" ")[0]}! ` +
+      `Atualização sobre a solicitação *${request.protocol}* — ` +
+      `*${request.title}*?`
+    );
+    window.open(`https://wa.me/${number}?text=${msg}`, "_blank");
+  };
   const addComment = async () => {
     if (!nc.content.trim()) return;
     try {
@@ -700,12 +712,15 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
   };  const tabs = isSolicitante?[["timeline","Acompanhamento"],["attachments","Anexos"]]:[["timeline","Timeline"],["comments","Comentários"],["attachments","Anexos"]];
   const downloadAttachment = async (attachment) => {
     try {
-      const url = await api.getAttachmentDownloadUrl(attachment.file_path);
-      if (!url) throw new Error("URL de download indisponível");
-      window.open(url, "_blank", "noopener,noreferrer");
+      const url = await api.getAttachmentUrl(attachment.file_path);
+      if (url) {
+        window.open(url, "_blank");
+      } else {
+        showToast("Erro ao gerar link de download.", "error");
+      }
     } catch (err) {
       console.error("downloadAttachment error:", err);
-      showToast("Erro ao baixar anexo: " + (err?.message || JSON.stringify(err)), "error");
+      showToast("Erro ao baixar arquivo.", "error");
     }
   };
 
@@ -714,7 +729,7 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
       <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:bp.isMobile?"14px 16px":"20px 24px", marginBottom:14 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
           <button onClick={()=>setView(backView)} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:8, padding:"7px 12px", cursor:"pointer", fontSize:13, color:"#64748b", display:"flex", alignItems:"center", gap:6, fontFamily:"'DM Sans',sans-serif" }}><Icon name="chevronRight" size={14} color="#64748b" style={{ transform:"rotate(180deg)" }} /> Voltar</button>
-          {assignee?.whatsapp&&<button onClick={openWA} style={{ marginLeft:"auto", padding:"8px 14px", background:"#16a34a", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:12, fontWeight:600, display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}><Icon name="phone" size={14} color="#fff" /> {bp.isMobile?"WhatsApp":"Falar com responsável"}</button>}
+          {assignee&&assignee.whatsapp&&<button onClick={openWA} style={{ marginLeft:"auto", padding:"8px 14px", background:"#16a34a", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:12, fontWeight:600, display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}><Icon name="phone" size={14} color="#fff" /> {bp.isMobile?"WhatsApp":"Falar com responsável"}</button>}
         </div>
         <div style={{ fontSize:11, color:"#94a3b8", fontFamily:"monospace", marginBottom:4 }}>{request.protocol}</div>
         <h2 style={{ fontSize:bp.isMobile?16:18, fontWeight:600, color:"#0f172a", marginBottom:10, lineHeight:1.3, fontFamily:"'Outfit',sans-serif" }}>{request.title}</h2>
@@ -760,7 +775,7 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
               </div>}
               {tab==="attachments"&&<div>
                 <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:14 }}>
-                  {(request.attachments||[]).map(a=>{ const ext=a.file_name.split(".").pop().toUpperCase(); const ec={PDF:"#ef4444",PNG:"#10b981",JPG:"#0ea5e9",XLSX:"#16a34a",CSV:"#16a34a",DOCX:"#2563eb"}[ext]||"#6366f1"; return (<div key={a.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"#f8fafc", borderRadius:10, border:"1px solid #e2e8f0" }}><div style={{ width:34, height:34, borderRadius:8, background:ec+"15", border:`1px solid ${ec}30`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ fontSize:10, fontWeight:700, color:ec, fontFamily:"monospace" }}>{ext}</span></div><div style={{ flex:1, overflow:"hidden" }}><div style={{ fontWeight:600, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{a.file_name}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{fsz(a.file_size)} · {fd(a.created_at)}</div></div><button onClick={()=>downloadAttachment(a)} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:6, padding:"5px 10px", cursor:"pointer", display:"flex", alignItems:"center", gap:4, fontSize:12, color:"#64748b" }}><Icon name="download" size={13} color="#64748b" /></button></div>); })}
+                  {(request.attachments||[]).map(a=>{ const ext=a.file_name.split(".").pop().toUpperCase(); const ec={PDF:"#ef4444",PNG:"#10b981",JPG:"#0ea5e9",XLSX:"#16a34a",CSV:"#16a34a",DOCX:"#2563eb"}[ext]||"#6366f1"; return (<div key={a.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 14px", background:"#f8fafc", borderRadius:10, border:"1px solid #e2e8f0" }}><div style={{ width:34, height:34, borderRadius:8, background:ec+"15", border:`1px solid ${ec}30`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ fontSize:10, fontWeight:700, color:ec, fontFamily:"monospace" }}>{ext}</span></div><div style={{ flex:1, overflow:"hidden" }}><div style={{ fontWeight:600, fontSize:13, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{a.file_name}</div><div style={{ fontSize:11, color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{fsz(a.file_size)} · {fd(a.created_at)}</div></div><button onClick={()=>downloadAttachment(a)} style={{ background:"none", border:"1px solid #e2e8f0", borderRadius:6, padding:"5px 10px", cursor:"pointer", display:"flex", alignItems:"center", gap:4, fontSize:12, color:"#64748b" }}>Baixar</button></div>); })}
                   {!(request.attachments||[]).length&&<div style={{ textAlign:"center", color:"#94a3b8", fontSize:13, padding:"20px 0", fontFamily:"'DM Sans',sans-serif" }}>Nenhum arquivo anexado.</div>}
                 </div>
                 <input type="file" ref={fileRef} style={{ display:"none" }} onChange={addFile} />
@@ -779,7 +794,7 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
               ))}
             </div>
           </div>
-          {isSolicitante&&assignee&&<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"16px 18px" }}><div style={{ fontWeight:600, fontSize:13, marginBottom:12, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>Responsável</div><div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}><Avatar user={assignee} size={34} /><div><div style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{assignee.full_name}</div><div style={{ fontSize:11, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>{team?.name}</div></div></div>{assignee.whatsapp&&<button onClick={openWA} style={{ width:"100%", padding:"10px", background:"#16a34a", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", justifyContent:"center", gap:8, fontFamily:"'DM Sans',sans-serif" }}><Icon name="phone" size={15} color="#fff" /> Enviar mensagem</button>}</div>}
+          {isSolicitante&&assignee&&<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"16px 18px" }}><div style={{ fontWeight:600, fontSize:13, marginBottom:12, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>Responsável</div><div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}><Avatar user={assignee} size={34} /><div><div style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{assignee.full_name}</div><div style={{ fontSize:11, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>{team?.name}</div></div></div>{assignee&&assignee.whatsapp&&<button onClick={openWA} style={{ width:"100%", padding:"10px", background:"#16a34a", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", justifyContent:"center", gap:8, fontFamily:"'DM Sans',sans-serif" }}><Icon name="phone" size={15} color="#fff" /> Enviar mensagem</button>}</div>}
           {canEdit&&<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"16px 18px" }}><div style={{ fontWeight:600, fontSize:13, marginBottom:14, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>Ações</div><div style={{ display:"flex", flexDirection:"column", gap:10 }}><Field label="Status"><select value={request.status} onChange={e=>updateRequest(request.id,{status:e.target.value})} style={inp}>{STATUSES.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select></Field><Field label="Prioridade"><select value={request.priority} onChange={e=>updateRequest(request.id,{priority:e.target.value})} style={inp}>{PRIORITIES.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select></Field><Field label="Responsável"><select value={request.assignee_id||""} onChange={e=>updateRequest(request.id,{assignee_id:e.target.value||null})} style={inp}><option value="">Sem responsável</option>{teamMembers.map(u=><option key={u.id} value={u.id}>{u.full_name}</option>)}</select></Field></div></div>}
         </div>
       </div>
@@ -1023,14 +1038,36 @@ function NewRequestView({ currentUser, setView, showToast, bp, teams, requestTyp
 // ADMIN USERS
 // ─────────────────────────────────────────────
 const EMPTY_FORM={full_name:"",email:"",role:"solicitante",team_id:"",whatsapp:"",is_active:true};
-function UserModal({ user, onSave, onClose, bp, availableRoles = ROLES, teams = TEAMS }) {
+function UserModal({ user, onSave, onClose, bp, availableRoles = ROLES, teams = TEAMS, api, setUsers, showToast }) {
   const isEdit=!!user; const [form,setForm]=useState(isEdit?{...user}:{...EMPTY_FORM}); const [errors,setErrors]=useState({});
   const needsTeam=form.role==="membro_equipe";
   const validate=()=>{ const e={}; if(!form.full_name.trim()) e.full_name="Nome obrigatório"; if(!form.email.trim()) e.email="E-mail obrigatório"; else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email="E-mail inválido"; if(needsTeam&&!form.team_id) e.team_id="Selecione a equipe"; return e; };
   const save=()=>{ const e=validate(); if(Object.keys(e).length){setErrors(e);return;} onSave(isEdit?{...form,id:form.id}:{...form}); };
   const set=(k,v)=>{ setForm(f=>({...f,[k]:v})); setErrors(e=>({...e,[k]:undefined})); };
   const fileRef=useRef();
-  const handleAvatarChange=e=>{ const file=e.target.files[0]; if(!file) return; const reader=new FileReader(); reader.onload=ev=>set("avatar",ev.target.result); reader.readAsDataURL(file); };
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = ev => setForm(f => ({ ...f, avatar: ev.target.result }));
+    reader.readAsDataURL(file);
+
+    if (isEdit && form.id) {
+      try {
+        const avatarUrl = await api.uploadAvatar(form.id, file);
+        setForm(f => ({ ...f, avatar_url: avatarUrl, avatar: avatarUrl }));
+        showToast("Foto atualizada com sucesso.");
+        if (typeof setUsers === "function") {
+          setUsers(prev => prev.map(u =>
+            u.id === form.id ? { ...u, avatar_url: avatarUrl } : u
+          ));
+        }
+      } catch (err) {
+        showToast("Erro ao salvar foto: " + (err?.message || err), "error");
+      }
+    }
+  };
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.5)", zIndex:1000, display:"flex", alignItems:bp.isMobile?"flex-end":"center", justifyContent:"center", padding:bp.isMobile?0:"20px" }}>
       <div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:bp.isMobile?"16px 16px 0 0":"14px", width:"100%", maxWidth:520, maxHeight:"92vh", overflow:"auto", boxShadow:"0 24px 80px rgba(0,0,0,0.2)" }}>
@@ -1169,7 +1206,7 @@ function AdminUsers({ bp, showToast, users, setUsers, teams = TEAMS, api, curren
           </table>
         </div>
       )}
-      {modal&&<UserModal user={modal==="new"?null:modal} onSave={saveUser} onClose={()=>setModal(null)} bp={bp} availableRoles={availableRoles} teams={teams} />}
+      {modal&&<UserModal user={modal==="new"?null:modal} onSave={saveUser} onClose={()=>setModal(null)} bp={bp} availableRoles={availableRoles} teams={teams} api={api} setUsers={setUsers} showToast={showToast} />}
       {confirmDeact&&<div onClick={()=>setConfirmDeact(null)} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.5)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}><div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:14, padding:"24px", maxWidth:380, width:"100%", boxShadow:"0 24px 60px rgba(0,0,0,0.2)", textAlign:"center" }}><Icon name="alertCircle" size={32} color="#dc2626" style={{ marginBottom:12 }} /><h3 style={{ fontWeight:600, fontSize:16, marginBottom:8, fontFamily:"'Outfit',sans-serif" }}>Desativar usuário?</h3><p style={{ fontSize:13, color:"#64748b", lineHeight:1.6, marginBottom:20, fontFamily:"'DM Sans',sans-serif" }}><strong>{confirmDeact.full_name}</strong> não poderá mais acessar o sistema.</p><div style={{ display:"flex", gap:10 }}><button onClick={()=>setConfirmDeact(null)} style={{ flex:1, padding:"10px", border:"1px solid #e2e8f0", borderRadius:8, background:"#fff", cursor:"pointer", fontSize:13, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>Cancelar</button><button onClick={()=>toggleActive(confirmDeact)} style={{ flex:1, padding:"10px", background:"#ef4444", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>Desativar</button></div></div></div>}
     </div>
   );
@@ -1509,29 +1546,31 @@ export default function ApexSolicitacoes() {
 
   // Verificar sessão ao carregar
   useEffect(() => {
-    const keysToClean = [
+    const oldKeys = [
+      "apex-auth-token",
       "apex-solicitacoes-auth",
-      "supabase.auth.token",
       "sb-bofdapvhuehclhdmkpsu-auth-token",
+      "supabase.auth.token",
     ];
-
-    keysToClean.forEach(key => {
-      if (key !== "apex-auth-token") {
-        localStorage.removeItem(key);
-        sessionStorage.removeItem(key);
-      }
+    oldKeys.forEach(k => {
+      localStorage.removeItem(k);
+      sessionStorage.removeItem(k);
     });
+
+    let mounted = true;
 
     api.getSession()
       .then(async session => {
         try {
-          if (session) {
+          if (!mounted) return;
+          if (session?.user) {
             const profile = await api.getProfile(session.user.id);
+            if (!mounted) return;
             if (profile && profile.is_active) {
               setCurrentUser(profile);
               setLoggedIn(true);
               setView(profile.role === "solicitante" ? "my-requests" : "dashboard");
-              await loadAllData();
+              loadAllData();
             } else if (profile && !profile.is_active) {
               await api.signOut();
             } else {
@@ -1543,19 +1582,22 @@ export default function ApexSolicitacoes() {
           setLoggedIn(false);
           setCurrentUser(null);
         } finally {
-          setAuthLoading(false);
+          if (mounted) setAuthLoading(false);
         }
       })
       .catch(err => {
         console.error("Erro ao buscar sessão:", err);
-        setLoggedIn(false);
-        setCurrentUser(null);
-        setAuthLoading(false);
+        if (mounted) setAuthLoading(false);
       });
+
+    const timeout = setTimeout(() => {
+      if (mounted) setAuthLoading(false);
+    }, 6000);
 
     // Listener de mudança de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return;
         console.log("Auth event:", event);
         if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
           setLoggedIn(false);
@@ -1571,8 +1613,9 @@ export default function ApexSolicitacoes() {
         }
 
         try {
-          if (event === 'SIGNED_IN' && session && !loggedIn) {
+          if (event === 'SIGNED_IN' && session?.user && !loggedIn) {
             const profile = await api.getProfile(session.user.id);
+            if (!mounted) return;
             if (profile && profile.is_active) {
               setCurrentUser(profile);
               setLoggedIn(true);
@@ -1585,33 +1628,21 @@ export default function ApexSolicitacoes() {
               console.warn("SIGNED_IN recebido, mas perfil ainda não carregou.");
             }
           }
-          if (event === 'SIGNED_OUT') {
-            setLoggedIn(false);
-            setCurrentUser(null);
-            setRequests([]);
-            setUsers([]);
-          }
         } catch (err) {
           console.error("Erro em mudança de autenticação:", err);
           setLoggedIn(false);
           setCurrentUser(null);
         } finally {
-          setAuthLoading(false);
+          if (mounted) setAuthLoading(false);
         }
       }
     );
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, []);
-
-  useEffect(() => {
-    if (!authLoading) return undefined;
-    const timeout = setTimeout(() => {
-      setLoggedIn(false);
-      setCurrentUser(null);
-      setAuthLoading(false);
-    }, 5000);
-    return () => clearTimeout(timeout);
-  }, [authLoading]);
 
   useEffect(() => {
     if (bp.isMobile || bp.isTablet) setSidebarOpen(false);

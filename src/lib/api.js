@@ -64,6 +64,50 @@ export async function toggleProfileActive(id, isActive) {
   return unwrap(await supabase.from("profiles").update({ is_active: isActive }).eq("id", id).select().single());
 }
 
+export async function uploadAvatar(userId, file) {
+  try {
+    const ext = file.name.split(".").pop();
+    const path = `avatars/${userId}.${ext}`;
+
+    await supabase.storage
+      .from("request-attachments")
+      .remove([path]);
+
+    const { error: upErr } = await supabase.storage
+      .from("request-attachments")
+      .upload(path, file, {
+        upsert: true,
+        contentType: file.type,
+      });
+
+    if (upErr) {
+      console.error("Avatar upload error:", upErr);
+      throw upErr;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("request-attachments")
+      .getPublicUrl(path);
+
+    const avatarUrl = urlData.publicUrl;
+
+    const { error: updateErr } = await supabase
+      .from("profiles")
+      .update({ avatar_url: avatarUrl })
+      .eq("id", userId);
+
+    if (updateErr) {
+      console.error("Avatar profile update error:", updateErr);
+      throw updateErr;
+    }
+
+    return avatarUrl;
+  } catch (err) {
+    console.error("uploadAvatar error:", err);
+    throw err;
+  }
+}
+
 export async function getTeams() {
   return unwrap(await supabase.from("teams").select("*").order("name"));
 }
@@ -209,15 +253,19 @@ export async function uploadAttachment(requestId, uploaderId, file) {
   return data;
 }
 
-export async function getAttachmentDownloadUrl(filePath) {
+export async function getAttachmentUrl(path) {
   const { data, error } = await supabase.storage
     .from("request-attachments")
-    .createSignedUrl(filePath, 60);
+    .createSignedUrl(path, 3600);
   if (error) {
-    console.error("Attachment download URL error:", error);
-    throw error;
+    console.error("getAttachmentUrl error:", error);
+    return null;
   }
   return data?.signedUrl;
+}
+
+export async function getAttachmentDownloadUrl(filePath) {
+  return getAttachmentUrl(filePath);
 }
 
 export async function getHistory(requestId) {
