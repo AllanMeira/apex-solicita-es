@@ -644,7 +644,13 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
   const requester = request._requester || gu(request.requester_id);
   const assignee = request._assignee || gu(request.assignee_id);
   const s=gs(request.status), p=gp(request.priority), team=request.team || gt(request.team_id), type=request.type || gtype(request.type_id);
-  const teamMembers = (users?.length ? users : USERS).filter(u=>u.team_id===request.team_id&&u.role==="membro_equipe");
+  const teamMembers = users.filter(u => {
+    if (!u.is_active && u.is_active !== undefined) return false;
+    if (["solicitante"].includes(u.role)) return false;
+    if (currentUser.role === "admin") return true;
+    if (currentUser.role === "supervisor") return true;
+    return u.team_id === request.team_id;
+  });
   const backView = isSolicitante?"my-requests":(detailFrom||"requests");
 
   const openWA = () => { if(!assignee?.whatsapp){showToast("Responsável sem WhatsApp cadastrado.","error");return;} const msg=encodeURIComponent(`Olá ${assignee.full_name.split(" ")[0]}! Atualização sobre a solicitação *${request.protocol}* — *${request.title}*?`); window.open(`https://wa.me/${assignee.whatsapp}?text=${msg}`,"_blank"); };
@@ -1466,6 +1472,19 @@ export default function ApexSolicitacoes() {
 
   // Verificar sessão ao carregar
   useEffect(() => {
+    const keysToClean = [
+      "apex-solicitacoes-auth",
+      "supabase.auth.token",
+      "sb-bofdapvhuehclhdmkpsu-auth-token",
+    ];
+
+    keysToClean.forEach(key => {
+      if (key !== "apex-auth-token") {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      }
+    });
+
     api.getSession()
       .then(async session => {
         try {
