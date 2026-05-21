@@ -208,7 +208,8 @@ const VisibilityToggle = ({ value, onChange }) => (
 function Avatar({ user, size = 32 }) {
   const colors = ["#6366f1","#0ea5e9","#10b981","#f59e0b","#ef4444","#8b5cf6","#ec4899"];
   const color = colors[(user?.full_name?.charCodeAt(0) || 0) % colors.length];
-  const initials = user?.full_name?.split(" ").slice(0, 2).map(n => n[0]).join("") || "?";
+  const initials = user?.full_name
+    ?.split(" ").slice(0, 2).map(n => n[0]).join("") || "?";
   const avatarUrl = user?.avatar_url || user?.avatar;
 
   if (avatarUrl) {
@@ -219,9 +220,6 @@ function Avatar({ user, size = 32 }) {
         borderRadius: "50%",
         overflow: "hidden",
         flexShrink: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
         background: color,
       }}>
         <img
@@ -235,8 +233,12 @@ function Avatar({ user, size = 32 }) {
             display: "block",
           }}
           onError={(e) => {
+            e.target.parentElement.style.display = "flex";
+            e.target.parentElement.style.alignItems = "center";
+            e.target.parentElement.style.justifyContent = "center";
             e.target.style.display = "none";
-            e.target.parentElement.innerHTML = initials;
+            e.target.parentElement.innerHTML =
+              `<span style="color:#fff;font-weight:600;font-size:${Math.round(size * 0.36)}px">${initials}</span>`;
           }}
         />
       </div>
@@ -256,7 +258,7 @@ function Avatar({ user, size = 32 }) {
       fontWeight: 600,
       fontSize: size * 0.36,
       flexShrink: 0,
-      fontFamily: "'DM Sans', sans-serif",
+      fontFamily: "system-ui, sans-serif",
     }}>
       {initials}
     </div>
@@ -1580,60 +1582,69 @@ export default function ApexSolicitacoes() {
 
   // Verificar sessão ao carregar
   useEffect(() => {
-    const oldKeys = [
-      "apex-auth-token",
-      "apex-solicitacoes-auth",
-      "sb-bofdapvhuehclhdmkpsu-auth-token",
-      "supabase.auth.token",
-    ];
-    oldKeys.forEach(k => {
-      localStorage.removeItem(k);
-      sessionStorage.removeItem(k);
-    });
-
     let mounted = true;
 
-    api.getSession()
-      .then(async session => {
-        try {
-          if (!mounted) return;
-          if (session?.user) {
-            const profile = await api.getProfile(session.user.id);
-            if (!mounted) return;
-            if (profile && profile.is_active) {
-              setCurrentUser(profile);
-              setLoggedIn(true);
-              setView(profile.role === "solicitante" ? "my-requests" : "dashboard");
-              loadAllData();
-            } else if (profile && !profile.is_active) {
-              await api.signOut();
-            } else {
-              console.warn("Perfil não carregado na verificação inicial da sessão.");
-            }
-          }
-        } catch (err) {
-          console.error("Erro ao verificar sessão:", err);
-          setLoggedIn(false);
-          setCurrentUser(null);
-        } finally {
+    const allKeys = Object.keys(localStorage);
+    allKeys.forEach(key => {
+      if (
+        key !== "apex-auth" &&
+        (
+          key.startsWith("apex-") ||
+          key.startsWith("sb-") ||
+          key.startsWith("supabase")
+        )
+      ) {
+        localStorage.removeItem(key);
+      }
+    });
+
+    const init = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error || !session) {
           if (mounted) setAuthLoading(false);
+          return;
         }
-      })
-      .catch(err => {
-        console.error("Erro ao buscar sessão:", err);
+
+        const profile = await api.getProfile(session.user.id);
+
+        if (!mounted) return;
+
+        if (profile && profile.is_active) {
+          setCurrentUser(profile);
+          setLoggedIn(true);
+          setView(profile.role === "solicitante" ? "my-requests" : "dashboard");
+          loadAllData();
+        } else {
+          await supabase.auth.signOut();
+        }
+      } catch (err) {
+        console.error("Init error:", err);
+        try { await supabase.auth.signOut(); } catch {}
+      } finally {
         if (mounted) setAuthLoading(false);
-      });
+      }
+    };
 
-    const timeout = setTimeout(() => {
-      if (mounted) setAuthLoading(false);
-    }, 6000);
+    const timeout = setTimeout(async () => {
+      if (mounted && authLoading) {
+        console.warn("Auth timeout — forçando logout");
+        try { await supabase.auth.signOut(); } catch {}
+        setAuthLoading(false);
+      }
+    }, 5000);
 
-    // Listener de mudança de auth
+    init();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
         console.log("Auth event:", event);
-        if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+
+        if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") return;
+
+        if (event === "SIGNED_OUT" || event === "USER_DELETED") {
           setLoggedIn(false);
           setCurrentUser(null);
           setRequests([]);
@@ -1642,12 +1653,9 @@ export default function ApexSolicitacoes() {
           return;
         }
 
-        if (event === 'TOKEN_REFRESHED') {
-          return;
-        }
-
-        try {
-          if (event === 'SIGNED_IN' && session?.user && !loggedIn) {
+        if (event === "SIGNED_IN" && session) {
+          if (loggedIn) return;
+          try {
             const profile = await api.getProfile(session.user.id);
             if (!mounted) return;
             if (profile && profile.is_active) {
@@ -1655,22 +1663,18 @@ export default function ApexSolicitacoes() {
               setLoggedIn(true);
               setView(profile.role === "solicitante" ? "my-requests" : "dashboard");
               loadAllData();
-            } else if (profile && !profile.is_active) {
-              await api.signOut();
-              showToast('Acesso negado. Usuário não cadastrado ou inativo.', 'error');
             } else {
-              console.warn("SIGNED_IN recebido, mas perfil ainda não carregou.");
+              await supabase.auth.signOut();
             }
+          } catch (err) {
+            console.error("SIGNED_IN error:", err);
+          } finally {
+            if (mounted) setAuthLoading(false);
           }
-        } catch (err) {
-          console.error("Erro em mudança de autenticação:", err);
-          setLoggedIn(false);
-          setCurrentUser(null);
-        } finally {
-          if (mounted) setAuthLoading(false);
         }
       }
     );
+
     return () => {
       mounted = false;
       clearTimeout(timeout);
@@ -1870,15 +1874,20 @@ export default function ApexSolicitacoes() {
   if (authLoading) {
     return (
       <div style={{
-        minHeight: "100vh", background: "#060d1a",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        flexDirection: "column", gap: 16
+        minHeight: "100vh",
+        background: "#060d1a",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexDirection: "column",
+        gap: 16,
+        fontFamily: "system-ui, -apple-system, sans-serif",
       }}>
         <ApexLogoMark size={48} />
         <div style={{
-          color: "#4a7ab8", fontSize: 13,
-          fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-          letterSpacing: "0.1em"
+          color: "#4a7ab8",
+          fontSize: 13,
+          letterSpacing: "0.1em",
         }}>Carregando...</div>
       </div>
     );
