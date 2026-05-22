@@ -117,7 +117,7 @@ function useBreakpoint() {
     const fn = () => setW(window.innerWidth);
     window.addEventListener("resize", fn);
     return () => window.removeEventListener("resize", fn);
-  }, []);
+  }, [])
   return { isMobile: w < 640, isTablet: w >= 640 && w < 1024, isDesktop: w >= 1024, w };
 }
 
@@ -1876,98 +1876,72 @@ export default function ApexSolicitacoes() {
 
   // Verificar sessão ao carregar
   useEffect(() => {
-    let mounted = true;
-
-    const allKeys = Object.keys(localStorage);
-    allKeys.forEach(key => {
-      if (
-        key !== "apex-auth" &&
-        (
-          key.startsWith("apex-") ||
-          key.startsWith("sb-") ||
-          key.startsWith("supabase")
-        )
-      ) {
-        localStorage.removeItem(key);
-      }
-    });
+    let mounted = true
 
     if (!hasSupabaseConfig) {
-      console.error("Configuração do Supabase ausente. Verifique VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.");
-      setLoggedIn(false);
-      setCurrentUser(null);
-      setAuthLoading(false);
-      return;
+      setAuthLoading(false)
+      return
     }
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!mounted) return;
-
-      if (session?.user) {
-        try {
-          const profile = await api.getProfile(session.user.id);
-          if (!mounted) return;
-          if (profile && profile.is_active) {
-            setCurrentUser(profile);
-            setLoggedIn(true);
-            setView(profile.role === "solicitante" ? "my-requests" : "dashboard");
-            loadAllData();
-          } else {
-            await supabase.auth.signOut();
-          }
-        } catch (err) {
-          console.error("getProfile error:", err);
-        }
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+      if (!mounted) return
+      if (error || !session) {
+        setAuthLoading(false)
+        return
       }
-
-      if (mounted) setAuthLoading(false);
-    }).catch(err => {
-      console.error("getSession error:", err);
-      if (mounted) setAuthLoading(false);
-    });
+      try {
+        const profile = await api.getProfile(session.user.id)
+        if (!mounted) return
+        if (profile && profile.is_active) {
+          setCurrentUser(profile)
+          setLoggedIn(true)
+          loadAllData()
+        } else {
+          await supabase.auth.signOut()
+        }
+      } catch (e) {
+        console.error(e)
+      } finally {
+        if (mounted) setAuthLoading(false)
+      }
+    })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (!mounted) return;
-        console.log("Auth event:", event);
-
-        if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") return;
-
-        if (event === "SIGNED_OUT" || event === "USER_DELETED") {
-          setLoggedIn(false);
-          setCurrentUser(null);
-          setRequests([]);
-          setUsers([]);
-          setAuthLoading(false);
-          return;
+        if (!mounted) return
+        if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') return
+        if (event === 'SIGNED_OUT') {
+          setLoggedIn(false)
+          setCurrentUser(null)
+          setRequests([])
+          setUsers([])
+          setAuthLoading(false)
+          return
         }
-
-        if (event === "SIGNED_IN" && session) {
-          if (loggedIn) return;
+        if (event === 'SIGNED_IN' && session && !loggedIn) {
           try {
-            const profile = await api.getProfile(session.user.id);
-            if (!mounted) return;
+            const profile = await api.getProfile(session.user.id)
+            if (!mounted) return
             if (profile && profile.is_active) {
-              setCurrentUser(profile);
-              setLoggedIn(true);
-              setView(profile.role === "solicitante" ? "my-requests" : "dashboard");
-              loadAllData();
+              setCurrentUser(profile)
+              setLoggedIn(true)
+              loadAllData()
             } else {
-              await supabase.auth.signOut();
+              await supabase.auth.signOut()
             }
-          } catch (err) {
-            console.error("SIGNED_IN error:", err);
+          } catch (e) {
+            console.error(e)
           } finally {
-            if (mounted) setAuthLoading(false);
+            if (mounted) setAuthLoading(false)
           }
         }
       }
-    );
+    )
 
     return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, []);
 
   useEffect(() => {
