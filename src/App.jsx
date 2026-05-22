@@ -1894,6 +1894,8 @@ export default function ApexSolicitacoes() {
 
     if (!hasSupabaseConfig) {
       console.error("Configuração do Supabase ausente. Verifique VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY.");
+      setLoggedIn(false);
+      setCurrentUser(null);
       setAuthLoading(false);
       return () => {
         mounted = false;
@@ -1929,10 +1931,11 @@ export default function ApexSolicitacoes() {
       }
     };
 
-    const timeout = setTimeout(async () => {
-      if (mounted && authLoading) {
-        console.warn("Auth timeout — forçando logout");
-        try { await supabase.auth.signOut(); } catch {}
+    const timeout = setTimeout(() => {
+      if (mounted) {
+        console.warn("Auth timeout");
+        setLoggedIn(false);
+        setCurrentUser(null);
         setAuthLoading(false);
       }
     }, 5000);
