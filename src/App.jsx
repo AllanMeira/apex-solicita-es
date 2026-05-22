@@ -1897,50 +1897,34 @@ export default function ApexSolicitacoes() {
       setLoggedIn(false);
       setCurrentUser(null);
       setAuthLoading(false);
-      return () => {
-        mounted = false;
-      };
+      return;
     }
 
-    const init = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
 
-        if (error || !session) {
-          if (mounted) setAuthLoading(false);
-          return;
+      if (session?.user) {
+        try {
+          const profile = await api.getProfile(session.user.id);
+          if (!mounted) return;
+          if (profile && profile.is_active) {
+            setCurrentUser(profile);
+            setLoggedIn(true);
+            setView(profile.role === "solicitante" ? "my-requests" : "dashboard");
+            loadAllData();
+          } else {
+            await supabase.auth.signOut();
+          }
+        } catch (err) {
+          console.error("getProfile error:", err);
         }
-
-        const profile = await api.getProfile(session.user.id);
-
-        if (!mounted) return;
-
-        if (profile && profile.is_active) {
-          setCurrentUser(profile);
-          setLoggedIn(true);
-          setView(profile.role === "solicitante" ? "my-requests" : "dashboard");
-          loadAllData();
-        } else {
-          await supabase.auth.signOut();
-        }
-      } catch (err) {
-        console.error("Init error:", err);
-        try { await supabase.auth.signOut(); } catch {}
-      } finally {
-        if (mounted) setAuthLoading(false);
       }
-    };
 
-    const timeout = setTimeout(() => {
-      if (mounted) {
-        console.warn("Auth timeout");
-        setLoggedIn(false);
-        setCurrentUser(null);
-        setAuthLoading(false);
-      }
-    }, 5000);
-
-    init();
+      if (mounted) setAuthLoading(false);
+    }).catch(err => {
+      console.error("getSession error:", err);
+      if (mounted) setAuthLoading(false);
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -1982,7 +1966,6 @@ export default function ApexSolicitacoes() {
 
     return () => {
       mounted = false;
-      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
@@ -2187,12 +2170,12 @@ export default function ApexSolicitacoes() {
         justifyContent: "center",
         flexDirection: "column",
         gap: 16,
-        fontFamily: "system-ui, -apple-system, sans-serif",
       }}>
         <ApexLogoMark size={48} />
         <div style={{
           color: "#4a7ab8",
           fontSize: 13,
+          fontFamily: "system-ui, sans-serif",
           letterSpacing: "0.1em",
         }}>Carregando...</div>
       </div>
