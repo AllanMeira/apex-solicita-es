@@ -95,6 +95,20 @@ export async function getProfiles() {
   return unwrap(await supabase.from("profiles").select("*").order("full_name"));
 }
 
+export async function getAvailableAssignees() {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, full_name, avatar_url, role, team_id, whatsapp")
+    .in("role", ["admin", "supervisor", "gestor", "membro_equipe"])
+    .eq("is_active", true)
+    .order("full_name");
+  if (error) {
+    console.error("getAvailableAssignees error:", error);
+    return [];
+  }
+  return data || [];
+}
+
 export async function upsertProfile(profile) {
   return unwrap(await supabase.from("profiles").upsert(profile).select().single());
 }

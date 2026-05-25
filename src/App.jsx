@@ -1289,13 +1289,28 @@ function HistoricoView({ requests, currentUser, openRequest, bp, teams = TEAMS, 
 // ─────────────────────────────────────────────
 function NewRequestView({ currentUser, setView, showToast, bp, teams, requestTypes, users, requests, originView, api, loadAllData }) {
   const [form,setForm]=useState({title:"",description:"",team_id:"",type_id:"",priority:"media",assignee_id:"",client_name:""});
+  const [assignees,setAssignees]=useState(users || []);
+  useEffect(() => {
+    let active = true;
+    if (users && users.length > 0) {
+      setAssignees(users);
+      return () => { active = false; };
+    }
+    api.getAvailableAssignees()
+      .then(data => { if (active) setAssignees(data); })
+      .catch(err => {
+        console.error("getAvailableAssignees error:", err);
+        if (active) setAssignees([]);
+      });
+    return () => { active = false; };
+  }, [users, api]);
   const types=requestTypes.filter(t=>t.team_id===form.team_id);
-  const members = (users || []).filter(u => {
-    if (!u.is_active && u.is_active !== undefined) return false;
+  const members = (assignees || []).filter(u => {
+    if (u.is_active === false) return false;
     if (u.role === "solicitante") return false;
     if (!form.team_id) return false;
-    return u.team_id === form.team_id ||
-      ["admin","supervisor","gestor"].includes(u.role);
+    if (["admin","supervisor","gestor"].includes(u.role)) return true;
+    return u.team_id === form.team_id;
   });
   const back=originView || (currentUser.role==="solicitante"?"my-requests":"requests");
   const nextProtocol = () => {
@@ -2057,7 +2072,10 @@ export default function ApexSolicitacoes() {
     try {
       const [reqs, profs, tms, types] = await Promise.all([
         api.getRequests(),
-        api.getProfiles(),
+        api.getProfiles().catch(err => {
+          console.error("getProfiles error:", err);
+          return [];
+        }),
         api.getTeams(),
         api.getRequestTypes(),
       ]);
