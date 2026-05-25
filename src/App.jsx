@@ -1483,12 +1483,12 @@ function UserModal({ user, onSave, onClose, bp, availableRoles = ROLES, teams = 
             </Field>
             {needsTeam&&<Field label="Equipe *"><div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>{teams.map(t=><button key={t.id} onClick={()=>set("team_id",t.id)} style={{ padding:"10px 12px", borderRadius:10, border:`2px solid ${form.team_id===t.id?t.color:"#e2e8f0"}`, background:form.team_id===t.id?t.color+"15":"#fff", cursor:"pointer", display:"flex", alignItems:"center", gap:8 }}><div style={{ width:10, height:10, borderRadius:"50%", background:t.color, flexShrink:0 }} /><span style={{ fontSize:13, fontWeight:600, color:form.team_id===t.id?t.color:"#374151", fontFamily:"'DM Sans',sans-serif" }}>{t.name}</span></button>)}</div>{errors.team_id&&<span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block" }}>{errors.team_id}</span>}</Field>}
             <Field label="WhatsApp (opcional)"><div style={{ position:"relative" }}><Icon name="phone" size={15} color="#475569" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }} /><input value={form.whatsapp||""} onChange={e=>set("whatsapp",e.target.value.replace(/\D/g,""))} placeholder="5511999990000" type="tel" style={{ ...inp, paddingLeft:36 }} /></div><span style={{ fontSize:11, color:"#94a3b8", marginTop:4, display:"block", fontFamily:"'DM Sans',sans-serif" }}>DDI + DDD + número</span></Field>
+            {isEdit&&<Field label="Status"><div style={{ display:"flex", gap:8 }}>{[{v:true,l:"Ativo",c:"#16a34a",b:"#f0fdf4"},{v:false,l:"Inativo",c:"#dc2626",b:"#fef2f2"}].map(opt=><button key={String(opt.v)} onClick={()=>set("is_active",opt.v)} style={{ flex:1, padding:"10px", borderRadius:8, border:`2px solid ${form.is_active===opt.v?opt.c:"#e2e8f0"}`, background:form.is_active===opt.v?opt.b:"#fff", cursor:"pointer", fontWeight:600, fontSize:13, color:form.is_active===opt.v?opt.c:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{opt.l}</button>)}</div></Field>}
             {isEdit&&(
               <div style={{ borderTop:"1px solid #f1f5f9", paddingTop:16, marginTop:4 }}>
-                <div style={{ fontSize:12, fontWeight:600, color:"#374151", marginBottom:12, fontFamily:"'DM Sans', sans-serif", display:"flex", alignItems:"center", gap:8 }}>
-                  <Icon name="lock" size={14} color="#374151" />
+                <label style={{ display:"block", fontSize:12, fontWeight:600, color:"#374151", marginBottom:6, fontFamily:"'DM Sans',sans-serif" }}>
                   Alterar senha (opcional)
-                </div>
+                </label>
                 <div style={{ position:"relative" }}>
                   <input value={form.newPassword||""} onChange={e=>set("newPassword",e.target.value)} type={showPass?"text":"password"} placeholder="Nova senha (mínimo 8 caracteres)" style={{ ...inp, paddingRight:38, borderColor:errors.newPassword?"#fca5a5":"#e2e8f0" }} />
                   <button type="button" onClick={()=>setShowPass(v=>!v)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", padding:0 }}>
@@ -1496,10 +1496,9 @@ function UserModal({ user, onSave, onClose, bp, availableRoles = ROLES, teams = 
                   </button>
                 </div>
                 {errors.newPassword&&<span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block" }}>{errors.newPassword}</span>}
-                <span style={{ fontSize:11, color:"#94a3b8", marginTop:4, display:"block", fontFamily:"'DM Sans', sans-serif" }}>Deixe em branco para não alterar a senha.</span>
+                <span style={{ fontSize:11, color:"#94a3b8", marginTop:4, display:"block", fontFamily:"'DM Sans',sans-serif" }}>Deixe em branco para não alterar a senha.</span>
               </div>
             )}
-            {isEdit&&<Field label="Status"><div style={{ display:"flex", gap:8 }}>{[{v:true,l:"Ativo",c:"#16a34a",b:"#f0fdf4"},{v:false,l:"Inativo",c:"#dc2626",b:"#fef2f2"}].map(opt=><button key={String(opt.v)} onClick={()=>set("is_active",opt.v)} style={{ flex:1, padding:"10px", borderRadius:8, border:`2px solid ${form.is_active===opt.v?opt.c:"#e2e8f0"}`, background:form.is_active===opt.v?opt.b:"#fff", cursor:"pointer", fontWeight:600, fontSize:13, color:form.is_active===opt.v?opt.c:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>{opt.l}</button>)}</div></Field>}
           </div>
         </div>
         <div style={{ padding:"16px 20px", borderTop:"1px solid #f1f5f9", display:"flex", gap:10, justifyContent:"flex-end", position:"sticky", bottom:0, background:"#fff" }}>
