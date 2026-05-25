@@ -9,15 +9,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <script>
-try {
-  var keep = 'apex-v1';
-  for (var i = localStorage.length - 1; i >= 0; i--) {
-    var k = localStorage.key(i);
-    if (k && k !== keep && (k.indexOf('apex') !== -1 || k.indexOf('sb-') !== -1 || k.indexOf('supabase') !== -1)) {
-      localStorage.removeItem(k);
-    }
-  }
-} catch(e) {}
+  (function() {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch(e) {}
+  })();
 </script>
   </head>
   <body>

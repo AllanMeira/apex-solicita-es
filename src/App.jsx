@@ -1369,11 +1369,48 @@ function NewRequestView({ currentUser, setView, showToast, bp, teams, requestTyp
 // ─────────────────────────────────────────────
 const EMPTY_FORM={full_name:"",email:"",role:"solicitante",team_id:"",whatsapp:"",is_active:true};
 function UserModal({ user, onSave, onClose, bp, availableRoles = ROLES, teams = TEAMS, api, setUsers, showToast }) {
-  const isEdit=!!user; const [form,setForm]=useState(isEdit?{...user}:{...EMPTY_FORM}); const [errors,setErrors]=useState({});
+  const isEdit=!!user; const [form,setForm]=useState(isEdit?{...user}:{...EMPTY_FORM,password:"Alpes@2025!"}); const [errors,setErrors]=useState({}); const [showPass,setShowPass]=useState(false); const [saving,setSaving]=useState(false);
   const needsTeam=form.role==="membro_equipe";
-  const validate=()=>{ const e={}; if(!form.full_name.trim()) e.full_name="Nome obrigatório"; if(!form.email.trim()) e.email="E-mail obrigatório"; else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email="E-mail inválido"; if(needsTeam&&!form.team_id) e.team_id="Selecione a equipe"; return e; };
-  const save=()=>{ const e=validate(); if(Object.keys(e).length){setErrors(e);return;} onSave(isEdit?{...form,id:form.id}:{...form}); };
   const set=(k,v)=>{ setForm(f=>({...f,[k]:v})); setErrors(e=>({...e,[k]:undefined})); };
+  const saveUserViaEdge=async()=>{
+    const e={};
+    if(!form.full_name.trim()) e.full_name="Nome obrigatório";
+    if(!form.email.trim()) e.email="E-mail obrigatório";
+    else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email="E-mail inválido";
+    if(needsTeam&&!form.team_id) e.team_id="Selecione a equipe";
+    if(!isEdit&&(!form.password||form.password.length<8)) e.password="Senha deve ter no mínimo 8 caracteres";
+    if(Object.keys(e).length){setErrors(e);return;}
+
+    setSaving(true);
+    try {
+      if (isEdit) {
+        await onSave({...form,id:form.id});
+      } else {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("Sessão expirada. Faça login novamente.");
+
+        await api.createUser({
+          full_name: form.full_name,
+          email: form.email,
+          password: form.password,
+          role: form.role,
+          team_id: form.team_id || null,
+          whatsapp: form.whatsapp || null,
+          is_active: form.is_active !== false,
+        }, session.access_token);
+
+        const updated = await api.getProfiles();
+        if (typeof setUsers === "function") setUsers(updated);
+        showToast("Usuário criado com sucesso.");
+        onClose();
+      }
+    } catch (err) {
+      console.error("UserModal save error:", err);
+      showToast("Erro ao salvar: " + (err?.message || err), "error");
+    } finally {
+      setSaving(false);
+    }
+  };
   const fileRef=useRef();
   const handleAvatarChange = async (e) => {
     const file = e.target.files[0];
@@ -1422,6 +1459,17 @@ function UserModal({ user, onSave, onClose, bp, availableRoles = ROLES, teams = 
           <div style={{ display:"grid", gap:14 }}>
             <Field label="Nome completo *"><input value={form.full_name} onChange={e=>set("full_name",e.target.value)} placeholder="Ex: João Silva" style={{ ...inp, borderColor:errors.full_name?"#fca5a5":"#e2e8f0" }} />{errors.full_name&&<span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block", fontFamily:"'DM Sans',sans-serif" }}>{errors.full_name}</span>}</Field>
             <Field label="E-mail *"><input value={form.email} onChange={e=>set("email",e.target.value)} placeholder="joao@alpesmidia.com" type="email" style={{ ...inp, borderColor:errors.email?"#fca5a5":"#e2e8f0" }} disabled={isEdit} />{errors.email&&<span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block" }}>{errors.email}</span>}{isEdit&&<span style={{ fontSize:11, color:"#94a3b8", marginTop:4, display:"block", fontFamily:"'DM Sans',sans-serif" }}>E-mail não pode ser alterado.</span>}</Field>
+            {!isEdit&&(
+              <Field label="Senha *">
+                <div style={{ position:"relative" }}>
+                  <input value={form.password||""} onChange={e=>set("password",e.target.value)} type={showPass?"text":"password"} placeholder="Mínimo 8 caracteres" style={{ ...inp, borderColor:errors.password?"#fca5a5":"#e2e8f0", paddingRight:38 }} />
+                  <button type="button" onClick={()=>setShowPass(v=>!v)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", padding:0 }}>
+                    <Icon name={showPass?"eyeOff":"eye"} size={15} color="#475569" />
+                  </button>
+                </div>
+                {errors.password&&<span style={{ fontSize:12, color:"#ef4444", marginTop:4, display:"block" }}>{errors.password}</span>}
+              </Field>
+            )}
             <Field label="Perfil de acesso *">
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
                 {availableRoles.map(r=><button key={r.key} onClick={()=>{set("role",r.key);if(r.key!=="membro_equipe") set("team_id","");}} style={{ padding:"10px 12px", borderRadius:10, border:`2px solid ${form.role===r.key?r.color:"#e2e8f0"}`, background:form.role===r.key?r.bg:"#fff", cursor:"pointer", textAlign:"left", transition:"all 0.15s" }}><div style={{ fontWeight:600, fontSize:13, color:form.role===r.key?r.color:"#374151", marginBottom:2, fontFamily:"'DM Sans',sans-serif" }}>{r.label}</div><div style={{ fontSize:11, color:"#94a3b8", lineHeight:1.3, fontFamily:"'DM Sans',sans-serif" }}>{r.desc}</div></button>)}
@@ -1434,7 +1482,7 @@ function UserModal({ user, onSave, onClose, bp, availableRoles = ROLES, teams = 
         </div>
         <div style={{ padding:"16px 20px", borderTop:"1px solid #f1f5f9", display:"flex", gap:10, justifyContent:"flex-end", position:"sticky", bottom:0, background:"#fff" }}>
           <button onClick={onClose} style={{ padding:"10px 20px", border:"1px solid #e2e8f0", borderRadius:8, background:"#fff", cursor:"pointer", fontSize:13, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>Cancelar</button>
-          <button onClick={save} style={{ padding:"10px 24px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>{isEdit?"Salvar alterações":"Criar usuário"}</button>
+          <button onClick={saveUserViaEdge} disabled={saving} style={{ padding:"10px 24px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:saving?"not-allowed":"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif", opacity:saving?0.8:1 }}>{saving?"Salvando...":isEdit?"Salvar alterações":"Criar usuário"}</button>
         </div>
       </div>
     </div>
@@ -1442,7 +1490,7 @@ function UserModal({ user, onSave, onClose, bp, availableRoles = ROLES, teams = 
 }
 
 function AdminUsers({ bp, showToast, users, setUsers, teams = TEAMS, api, currentUser }) {
-  const [modal,setModal]=useState(null); const [search,setSearch]=useState(""); const [filterRole,setFilterRole]=useState(""); const [confirmDeact,setConfirmDeact]=useState(null); const [newUserInfo,setNewUserInfo]=useState(null);
+  const [modal,setModal]=useState(null); const [search,setSearch]=useState(""); const [filterRole,setFilterRole]=useState(""); const [confirmDeact,setConfirmDeact]=useState(null);
   const visibleUsers = currentUser.role === "supervisor"
     ? users.filter(u => u.role !== "admin")
     : users;
@@ -1477,8 +1525,6 @@ function AdminUsers({ bp, showToast, users, setUsers, teams = TEAMS, api, curren
         const updated = await api.getProfiles();
         setUsers(updated);
         showToast("Usuário atualizado.");
-      } else {
-        setNewUserInfo({ email: data.email, full_name: data.full_name });
       }
       setModal(null);
     } catch (err) {
@@ -1544,7 +1590,6 @@ function AdminUsers({ bp, showToast, users, setUsers, teams = TEAMS, api, curren
       )}
       {modal&&<UserModal user={modal==="new"?null:modal} onSave={saveUser} onClose={()=>setModal(null)} bp={bp} availableRoles={availableRoles} teams={teams} api={api} setUsers={setUsers} showToast={showToast} />}
       {confirmDeact&&<div onClick={()=>setConfirmDeact(null)} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.5)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}><div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:14, padding:"24px", maxWidth:380, width:"100%", boxShadow:"0 24px 60px rgba(0,0,0,0.2)", textAlign:"center" }}><Icon name="alertCircle" size={32} color="#dc2626" style={{ marginBottom:12 }} /><h3 style={{ fontWeight:600, fontSize:16, marginBottom:8, fontFamily:"'Outfit',sans-serif" }}>Desativar usuário?</h3><p style={{ fontSize:13, color:"#64748b", lineHeight:1.6, marginBottom:20, fontFamily:"'DM Sans',sans-serif" }}><strong>{confirmDeact.full_name}</strong> não poderá mais acessar o sistema.</p><div style={{ display:"flex", gap:10 }}><button onClick={()=>setConfirmDeact(null)} style={{ flex:1, padding:"10px", border:"1px solid #e2e8f0", borderRadius:8, background:"#fff", cursor:"pointer", fontSize:13, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>Cancelar</button><button onClick={()=>toggleActive(confirmDeact)} style={{ flex:1, padding:"10px", background:"#ef4444", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>Desativar</button></div></div></div>}
-      {newUserInfo&&<div onClick={()=>setNewUserInfo(null)} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.5)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}><div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:14, padding:24, maxWidth:460, width:"100%", boxShadow:"0 24px 60px rgba(0,0,0,0.2)" }}><div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}><Icon name="info" size={28} color="#1e3d6e" /><h3 style={{ fontWeight:600, fontSize:16, color:"#0f172a", fontFamily:"'Outfit',sans-serif" }}>Como criar o acesso do usuário</h3></div><p style={{ fontSize:13, color:"#475569", lineHeight:1.6, marginBottom:16, fontFamily:"'DM Sans',sans-serif" }}>Para criar o acesso de <strong>{newUserInfo.full_name}</strong>, acesse o painel do Supabase e cadastre o usuário manualmente com os dados abaixo:</p><div style={{ background:"#f8fafc", border:"1px solid #e2e8f0", borderRadius:10, padding:"14px 16px", marginBottom:16 }}><div style={{ marginBottom:8, fontFamily:"'DM Sans',sans-serif", fontSize:13 }}><span style={{ color:"#64748b" }}>E-mail:</span>{" "}<strong style={{ color:"#0f172a", fontFamily:"monospace" }}>{newUserInfo.email}</strong></div><div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13 }}><span style={{ color:"#64748b" }}>Senha temporária:</span>{" "}<strong style={{ color:"#0f172a", fontFamily:"monospace" }}>Alpes@2025!</strong></div></div><a href="https://supabase.com/dashboard/project/bofdapvhuehclhdmkpsu/auth/users" target="_blank" rel="noopener noreferrer" style={{ display:"block", marginBottom:16, padding:"10px 14px", background:"#1e3d6e", color:"#fff", borderRadius:8, textAlign:"center", fontSize:13, fontWeight:600, textDecoration:"none", fontFamily:"'DM Sans',sans-serif" }}>Abrir painel de usuários no Supabase ↗</a><p style={{ fontSize:12, color:"#94a3b8", lineHeight:1.5, marginBottom:20, fontFamily:"'DM Sans',sans-serif" }}>Após criar o usuário no Supabase, ele aparecerá automaticamente na lista para você atribuir o perfil.</p><button onClick={()=>setNewUserInfo(null)} style={{ width:"100%", padding:"10px", background:"#f1f5f9", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, color:"#374151", fontFamily:"'DM Sans',sans-serif" }}>Fechar</button></div></div>}
     </div>
   );
 }
@@ -1893,7 +1938,7 @@ export default function ApexSolicitacoes() {
     supabase.auth.getSession().then(async ({ data: { session }, error }) => {
       if (!mounted) return
       if (error || !session) {
-        setAuthLoading(false)
+        if (mounted) setAuthLoading(false)
         return
       }
       try {
@@ -1907,11 +1952,21 @@ export default function ApexSolicitacoes() {
           await supabase.auth.signOut()
         }
       } catch (e) {
-        console.error(e)
+        console.error('getProfile error:', e)
       } finally {
         if (mounted) setAuthLoading(false)
       }
+    }).catch(err => {
+      console.error('getSession error:', err)
+      if (mounted) setAuthLoading(false)
     })
+
+    const timeout = setTimeout(() => {
+      if (mounted) {
+        console.warn('Supabase timeout — liberando login')
+        setAuthLoading(false)
+      }
+    }, 8000)
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -1947,6 +2002,7 @@ export default function ApexSolicitacoes() {
 
     return () => {
       mounted = false
+      clearTimeout(timeout)
       subscription.unsubscribe()
     }
   }, []);
@@ -2159,6 +2215,15 @@ export default function ApexSolicitacoes() {
           fontFamily: "system-ui, sans-serif",
           letterSpacing: "0.1em",
         }}>Carregando...</div>
+        <div id="auth-debug" style={{
+          color: "#334155",
+          fontSize: 11,
+          fontFamily: "monospace",
+          maxWidth: 300,
+          textAlign: "center",
+        }}>
+          Aguardando conexão com Supabase...
+        </div>
       </div>
     );
   }

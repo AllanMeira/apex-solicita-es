@@ -31,6 +31,24 @@ export async function signOut() {
   return unwrap(await supabase.auth.signOut());
 }
 
+export async function createUser(userData, authToken) {
+  const response = await fetch(
+    "https://bofdapvhuehclhdmkpsu.supabase.co/functions/v1/create-user",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify(userData),
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Erro ao criar usuário");
+  return data;
+}
+
 export async function getProfile(userId) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
