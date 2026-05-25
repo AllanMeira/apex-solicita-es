@@ -649,7 +649,7 @@ function MetricCard({ label, value, color, sub, bp }) {
 // ─────────────────────────────────────────────
 // MY REQUESTS (solicitante)
 // ─────────────────────────────────────────────
-function MyRequestsView({ requests, currentUser, openRequest, setView, bp, teams = TEAMS, users = USERS }) {
+function LegacyMyRequestsView({ requests, currentUser, openRequest, setView, bp, teams = TEAMS, users = USERS }) {
   const [tab, setTab] = useState("ativos");
   const [search, setSearch] = useState("");
   const all = requests.filter(x=>x.requester_id===currentUser.id);
@@ -693,6 +693,254 @@ function MyRequestsView({ requests, currentUser, openRequest, setView, bp, teams
 // ─────────────────────────────────────────────
 // DETAIL VIEW
 // ─────────────────────────────────────────────
+function MyRequestsView({ requests, currentUser, openRequest, setView, bp, users = [], teams = [] }) {
+  const [tab, setTab] = useState("ativos");
+  const [search, setSearch] = useState("");
+
+  const all = requests.filter(x => x.requester_id === currentUser.id);
+  const ativos = all.filter(x => !["finalizada", "cancelada"].includes(x.status));
+  const finalizados = all.filter(x => ["finalizada", "cancelada"].includes(x.status));
+  const listed = useMemo(() => {
+    let r = tab === "ativos" ? ativos : finalizados;
+    if (search) {
+      const q = search.toLowerCase();
+      r = r.filter(x => x.title.toLowerCase().includes(q) || x.protocol?.includes(search));
+    }
+    return [...r].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+  }, [tab, ativos, finalizados, search]);
+
+  const avgDays = useMemo(() => {
+    const res = finalizados.filter(r => r.created_at && r.updated_at);
+    if (!res.length) return null;
+    return (res.reduce((acc, r) => acc + Math.max(0, (new Date(r.updated_at) - new Date(r.created_at)) / 86400000), 0) / res.length).toFixed(1);
+  }, [finalizados]);
+
+  const oldestOpen = ativos.length > 0
+    ? ativos.reduce((a, b) => new Date(a.created_at) < new Date(b.created_at) ? a : b)
+    : null;
+
+  const now = new Date();
+  const daysSince = d => Math.floor((now - new Date(d)) / 86400000);
+
+  return (
+    <div style={{ paddingBottom: bp.isMobile ? 80 : 0, maxWidth: 800, margin: "0 auto" }}>
+      <div style={{
+        background: "linear-gradient(135deg, #1e3d6e 0%, #2d5a9e 100%)",
+        borderRadius: 16, padding: bp.isMobile ? "20px 16px" : "24px 28px",
+        marginBottom: 20, color: "#fff", display: "flex", alignItems: "center",
+        justifyContent: "space-between", flexWrap: "wrap", gap: 12,
+      }}>
+        <div>
+          <div style={{ fontSize: bp.isMobile ? 18 : 22, fontWeight: 700, fontFamily: "'Outfit',sans-serif", marginBottom: 4 }}>
+            Olá, {currentUser.full_name.split(" ")[0]}! 👋
+          </div>
+          <div style={{ fontSize: 13, opacity: 0.8, fontFamily: "'DM Sans',sans-serif" }}>
+            {ativos.length === 0 ? "Nenhuma solicitação em aberto no momento." : `Você tem ${ativos.length} ${ativos.length > 1 ? "solicitações" : "solicitação"} em aberto.`}
+          </div>
+        </div>
+        <button onClick={() => setView("new")} style={{
+          background: "#fff", color: "#1e3d6e", border: "none", borderRadius: 10,
+          padding: "10px 20px", cursor: "pointer", fontSize: 13, fontWeight: 700,
+          fontFamily: "'DM Sans',sans-serif", display: "flex", alignItems: "center",
+          gap: 6, whiteSpace: "nowrap",
+        }}>
+          <Icon name="plus" size={15} color="#1e3d6e" />
+          Nova Solicitação
+        </button>
+      </div>
+
+      <div style={{
+        display: "grid", gridTemplateColumns: bp.isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)",
+        gap: 12, marginBottom: 20,
+      }}>
+        {[
+          { label: "Total", value: all.length, color: "#1e3d6e", icon: "ticket" },
+          { label: "Em Aberto", value: ativos.length, color: "#2563eb", icon: "clock" },
+          { label: "Finalizadas", value: finalizados.filter(x => x.status === "finalizada").length, color: "#16a34a", icon: "checkCircle" },
+          { label: "Tempo médio", value: avgDays ? avgDays + "d" : "—", color: "#7c3aed", icon: "trendingUp" },
+        ].map(m => (
+          <div key={m.label} style={{
+            background: "#fff", borderRadius: 12, padding: "14px 16px",
+            border: "1px solid #e2e8f0", borderTop: `3px solid ${m.color}`,
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <span style={{ fontSize: 11, color: "#64748b", fontFamily: "'DM Sans',sans-serif" }}>{m.label}</span>
+              <Icon name={m.icon} size={14} color={m.color} />
+            </div>
+            <div style={{
+              fontSize: bp.isMobile ? 22 : 26, fontWeight: 700,
+              color: m.value !== "—" ? m.color : "#94a3b8", fontFamily: "'Outfit',sans-serif",
+            }}>{m.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {oldestOpen && daysSince(oldestOpen.created_at) >= 3 && (
+        <div style={{
+          background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 12,
+          padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 10,
+        }}>
+          <Icon name="alertCircle" size={16} color="#c2410c" />
+          <div style={{ flex: 1 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#c2410c", fontFamily: "'DM Sans',sans-serif" }}>
+              Chamado aguardando há {daysSince(oldestOpen.created_at)} dias:
+            </span>
+            <span style={{ fontSize: 13, color: "#92400e", marginLeft: 6, fontFamily: "'DM Sans',sans-serif" }}>{oldestOpen.title}</span>
+          </div>
+        </div>
+      )}
+
+      <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden" }}>
+        <div style={{ display: "flex", borderBottom: "1px solid #f1f5f9" }}>
+          {[["ativos", `Em Aberto (${ativos.length})`], ["finalizados", `Finalizados (${finalizados.length})`]].map(([k, l]) => (
+            <button key={k} onClick={() => setTab(k)} style={{
+              flex: 1, padding: "14px 16px", border: "none", background: "transparent", cursor: "pointer",
+              fontSize: 13, fontWeight: tab === k ? 700 : 400, color: tab === k ? "#1e3d6e" : "#64748b",
+              borderBottom: tab === k ? "2px solid #1e3d6e" : "2px solid transparent", fontFamily: "'DM Sans',sans-serif",
+            }}>{l}</button>
+          ))}
+        </div>
+
+        <div style={{ padding: "12px 16px", borderBottom: "1px solid #f1f5f9" }}>
+          <div style={{ position: "relative" }}>
+            <Icon name="search" size={15} color="#94a3b8" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por título ou protocolo..." style={{ ...inp, paddingLeft: 36, fontSize: 13 }} />
+          </div>
+        </div>
+
+        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+          {listed.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 20px" }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>{tab === "ativos" ? "✅" : "📋"}</div>
+              <div style={{ fontWeight: 600, fontSize: 15, color: "#374151", marginBottom: 6, fontFamily: "'Outfit',sans-serif" }}>
+                {tab === "ativos" ? "Nenhuma solicitação em aberto" : "Nenhuma solicitação finalizada"}
+              </div>
+              {tab === "ativos" && (
+                <button onClick={() => setView("new")} style={{
+                  marginTop: 12, padding: "10px 20px", background: "#1e3d6e", color: "#fff",
+                  border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, fontWeight: 600,
+                  fontFamily: "'DM Sans',sans-serif",
+                }}>Abrir primeira solicitação</button>
+              )}
+            </div>
+          ) : listed.map(r => {
+            const s = STATUSES.find(st => st.key === r.status) || STATUSES[0];
+            const p = PRIORITIES.find(pr => pr.key === r.priority) || PRIORITIES[1];
+            const t = teams.find(tm => tm.id === r.team_id);
+            const assignee = r._assignee || users?.find(u => u.id === r.assignee_id);
+            const waiting = r.status === "aguardando_solicitante";
+            const days = daysSince(r.created_at);
+            const progressSteps = ["nova", "em_analise", "em_andamento", "finalizada"];
+            const progressIdx = progressSteps.indexOf(r.status);
+            const progressPct = progressIdx < 0 ? 100 : Math.round((progressIdx / (progressSteps.length - 1)) * 100);
+
+            return (
+              <div key={r.id} onClick={() => openRequest(r.id)}
+                style={{
+                  background: waiting ? "#fffbeb" : "#fafafa", borderRadius: 12,
+                  border: waiting ? "1.5px solid #fbbf24" : "1px solid #e2e8f0",
+                  borderLeft: `4px solid ${t?.color || "#e2e8f0"}`, padding: "16px",
+                  cursor: "pointer", transition: "all 0.15s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "none"; }}
+              >
+                {waiting && (
+                  <div style={{
+                    display: "inline-flex", alignItems: "center", gap: 6, background: "#fef3c7",
+                    color: "#92400e", padding: "4px 10px", borderRadius: 20, fontSize: 12,
+                    fontWeight: 600, marginBottom: 10, fontFamily: "'DM Sans',sans-serif",
+                  }}>
+                    <Icon name="alertCircle" size={12} color="#92400e" />
+                    Aguardando sua resposta
+                  </div>
+                )}
+
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: "#94a3b8", fontFamily: "monospace", marginBottom: 3 }}>{r.protocol}</div>
+                    <div style={{
+                      fontWeight: 700, fontSize: 15, color: "#0f172a", lineHeight: 1.3,
+                      marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box",
+                      WebkitLineClamp: 2, WebkitBoxOrient: "vertical", fontFamily: "'DM Sans',sans-serif",
+                    }}>{r.title}</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                      <span style={{
+                        padding: "3px 10px", borderRadius: 20, fontSize: 12,
+                        fontWeight: 600, color: s.color, background: s.bg, fontFamily: "'DM Sans',sans-serif",
+                      }}>{s.label}</span>
+                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: p.color, display: "inline-block" }} />
+                        <span style={{ fontSize: 11, color: p.color, fontWeight: 600, fontFamily: "'DM Sans',sans-serif" }}>{p.label}</span>
+                      </span>
+                      {t && (
+                        <span style={{
+                          padding: "3px 8px", borderRadius: 6, fontSize: 11,
+                          background: t.color + "20", color: t.color, fontWeight: 600, fontFamily: "'DM Sans',sans-serif",
+                        }}>{t.name}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+                    {assignee ? (
+                      <div style={{ textAlign: "right" }}>
+                        <Avatar user={assignee} size={32} />
+                        <div style={{ fontSize: 10, color: "#64748b", marginTop: 3, fontFamily: "'DM Sans',sans-serif" }}>{assignee.full_name.split(" ")[0]}</div>
+                      </div>
+                    ) : (
+                      <div style={{
+                        width: 32, height: 32, borderRadius: "50%", background: "#f1f5f9",
+                        border: "2px dashed #e2e8f0", display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <Icon name="user" size={14} color="#cbd5e1" />
+                      </div>
+                    )}
+                    <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap", fontFamily: "'DM Sans',sans-serif" }}>
+                      {days === 0 ? "Hoje" : days === 1 ? "Ontem" : `${days}d atrás`}
+                    </span>
+                  </div>
+                </div>
+
+                {!["finalizada", "cancelada"].includes(r.status) && (
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <span style={{ fontSize: 10, color: "#94a3b8", fontFamily: "'DM Sans',sans-serif" }}>Progresso</span>
+                      <span style={{ fontSize: 10, color: "#64748b", fontWeight: 600, fontFamily: "'DM Sans',sans-serif" }}>{progressPct}%</span>
+                    </div>
+                    <div style={{ height: 4, background: "#e2e8f0", borderRadius: 2, overflow: "hidden" }}>
+                      <div style={{
+                        height: "100%", borderRadius: 2, background: progressPct === 100 ? "#16a34a" : "#1e3d6e",
+                        width: `${progressPct}%`, transition: "width 0.4s ease",
+                      }} />
+                    </div>
+                  </div>
+                )}
+
+                {r.status === "finalizada" && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
+                    <Icon name="checkCircle" size={14} color="#16a34a" />
+                    <span style={{ fontSize: 12, color: "#16a34a", fontWeight: 600, fontFamily: "'DM Sans',sans-serif" }}>
+                      Finalizado em {new Date(r.updated_at).toLocaleDateString("pt-BR")}
+                    </span>
+                  </div>
+                )}
+
+                {r.status === "cancelada" && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
+                    <Icon name="x" size={14} color="#dc2626" />
+                    <span style={{ fontSize: 12, color: "#dc2626", fontWeight: 600, fontFamily: "'DM Sans',sans-serif" }}>Cancelado</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DetailView({ request, currentUser, updateRequest, setView, showToast, setRequests, bp, detailFrom, users = [], teams = [], api }) {
   const [tab, setTab] = useState("timeline");
   const [nc, setNc] = useState({ content:"", visibility:"publico" });
@@ -849,7 +1097,44 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
               ))}
             </div>
           </div>
-          {isSolicitante&&assignee&&<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"16px 18px" }}><div style={{ fontWeight:600, fontSize:13, marginBottom:12, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>Responsável</div><div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}><Avatar user={assignee} size={34} /><div><div style={{ fontWeight:600, fontSize:13, fontFamily:"'DM Sans',sans-serif" }}>{assignee.full_name}</div><div style={{ fontSize:11, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>{team?.name}</div></div></div>{assignee&&assignee.whatsapp&&<button onClick={openWA} style={{ width:"100%", padding:"10px", background:"#16a34a", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", justifyContent:"center", gap:8, fontFamily:"'DM Sans',sans-serif" }}><Icon name="phone" size={15} color="#fff" /> Enviar mensagem</button>}</div>}
+          {isSolicitante && assignee && (
+            <div style={{
+              background: "#fff", borderRadius: 12,
+              border: "1px solid #e2e8f0", padding: "18px",
+              marginBottom: 14,
+            }}>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 14, fontFamily: "'Outfit',sans-serif", color: "#374151" }}>
+                Responsável pelo atendimento
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
+                <Avatar user={assignee} size={48} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: "#0f172a", fontFamily: "'DM Sans',sans-serif" }}>
+                    {assignee.full_name}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2, fontFamily: "'DM Sans',sans-serif" }}>
+                    {teams.find(t => t.id === request.team_id)?.name || "Equipe TI"}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a" }} />
+                    <span style={{ fontSize: 11, color: "#16a34a", fontWeight: 600, fontFamily: "'DM Sans',sans-serif" }}>Disponível</span>
+                  </div>
+                </div>
+              </div>
+              {assignee.whatsapp && (
+                <button onClick={openWA} style={{
+                  width: "100%", padding: "12px", background: "#16a34a",
+                  color: "#fff", border: "none", borderRadius: 10,
+                  cursor: "pointer", fontSize: 14, fontWeight: 600,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  fontFamily: "'DM Sans',sans-serif",
+                }}>
+                  <Icon name="phone" size={16} color="#fff" />
+                  Enviar mensagem pelo WhatsApp
+                </button>
+              )}
+            </div>
+          )}
           {canEdit&&<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"16px 18px" }}><div style={{ fontWeight:600, fontSize:13, marginBottom:14, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>Ações</div><div style={{ display:"flex", flexDirection:"column", gap:10 }}><Field label="Status"><select value={request.status} onChange={e=>updateRequest(request.id,{status:e.target.value})} style={inp}>{STATUSES.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select></Field><Field label="Prioridade"><select value={request.priority} onChange={e=>updateRequest(request.id,{priority:e.target.value})} style={inp}>{PRIORITIES.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select></Field><Field label="Responsável"><select value={request.assignee_id||""} onChange={e=>updateRequest(request.id,{assignee_id:e.target.value||null})} style={inp}><option value="">Sem responsável</option>{teamMembers.map(u=><option key={u.id} value={u.id}>{u.full_name}</option>)}</select></Field></div></div>}
         </div>
       </div>
