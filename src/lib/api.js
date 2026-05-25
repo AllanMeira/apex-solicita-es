@@ -49,6 +49,27 @@ export async function createUser(userData, authToken) {
   return data;
 }
 
+export async function updateUserPassword(userId, newPassword, authToken) {
+  const response = await fetch(
+    "https://bofdapvhuehclhdmkpsu.supabase.co/functions/v1/update-user-password",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        new_password: newPassword,
+      }),
+    }
+  );
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Erro ao alterar senha");
+  return data;
+}
+
 export async function getProfile(userId) {
   try {
     const { data: { session } } = await supabase.auth.getSession();
