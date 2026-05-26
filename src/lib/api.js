@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const isDev = import.meta.env.DEV;
 
 const unwrap = ({ data, error }) => {
   if (error) throw error;
@@ -46,7 +47,7 @@ const withRestFallback = async (label, supabasePromise, restPromise) => {
   try {
     return await withTimeout(supabasePromise, 12000, `${label} timeout`);
   } catch (err) {
-    console.warn(`${label} via supabase-js falhou; tentando REST:`, err);
+    if (isDev) console.warn(`${label} via supabase-js falhou; tentando REST:`, err);
     return restPromise();
   }
 };

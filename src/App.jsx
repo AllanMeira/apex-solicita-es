@@ -2520,8 +2520,11 @@ export default function ApexSolicitacoes() {
         }
       }
     }).catch(err => {
-      if (cachedProfile?.id) console.warn('getSession timeout; usando perfil em cache:', err)
-      else console.error('getSession error:', err)
+      if (cachedProfile?.id) {
+        if (import.meta.env.DEV) console.warn('getSession timeout; usando perfil em cache:', err)
+      } else {
+        console.error('getSession error:', err)
+      }
       if (mounted) {
         if (timeoutId) clearTimeout(timeoutId)
         if (!cachedProfile?.id) {
@@ -2613,11 +2616,11 @@ export default function ApexSolicitacoes() {
     setDataLoading(true);
     const safeLoad = (label, promise, fallback, ms = 35000) => Promise.race([
       promise.catch(err => {
-        console.warn(`${label} error:`, err);
+        if (import.meta.env.DEV) console.warn(`${label} error:`, err);
         return fallback;
       }),
       new Promise(resolve => setTimeout(() => {
-        console.warn(`${label} timeout; usando fallback`);
+        if (import.meta.env.DEV) console.warn(`${label} timeout; usando fallback`);
         resolve(fallback);
       }, ms)),
     ]);
