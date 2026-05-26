@@ -523,35 +523,42 @@ function LoginScreen({ onLogin, onGoogleLogin }) {
           </div>
 
           {tab==="email" && (
-            <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleLogin();
+              }}
+              style={{ display:"flex", flexDirection:"column", gap:16 }}
+              autoComplete="on"
+            >
               <Field label="E-mail">
                 <div style={{ position:"relative" }}>
                   <Icon name="mail" size={16} color="#475569" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }} />
-                  <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="seu@alpesmidia.com" type="email"
+                  <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="seu@alpesmidia.com" type="email" name="email" autoComplete="username"
                     style={{ ...inp, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(59,110,168,0.25)", color:"#e2e8f0", paddingLeft:38 }}
-                    onKeyDown={e=>e.key==="Enter"&&handleLogin()} />
+                  />
                 </div>
               </Field>
               <Field label="Senha">
                 <div style={{ position:"relative" }}>
                   <Icon name="lock" size={16} color="#475569" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }} />
-                  <input value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" type={showPass?"text":"password"}
+                  <input value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" type={showPass?"text":"password"} name="password" autoComplete="current-password"
                     style={{ ...inp, background:"rgba(255,255,255,0.05)", border:"1px solid rgba(59,110,168,0.25)", color:"#e2e8f0", paddingLeft:38, paddingRight:38 }}
-                    onKeyDown={e=>e.key==="Enter"&&handleLogin()} />
-                  <button onClick={()=>setShowPass(v=>!v)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", padding:0 }}>
+                  />
+                  <button type="button" onClick={()=>setShowPass(v=>!v)} style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", cursor:"pointer", padding:0 }}>
                     <Icon name={showPass?"eyeOff":"eye"} size={15} color="#475569" />
                   </button>
                 </div>
               </Field>
-              <button onClick={handleLogin} disabled={loading||!email||!password}
+              <button type="submit" disabled={loading||!email||!password}
                 style={{ width:"100%", padding:"12px", background: loading||!email||!password?"rgba(59,110,168,0.3)":"linear-gradient(135deg,#1e3d6e,#3b6ea8)", color:"#fff", border:"none", borderRadius:8, cursor:loading||!email||!password?"not-allowed":"pointer", fontSize:14, fontWeight:600, fontFamily:"'Outfit',sans-serif", letterSpacing:"0.05em", transition:"all 0.2s" }}>
                 {loading ? "Entrando..." : "Entrar"}
               </button>
               {error&&<div style={{ color:"#fca5a5", fontSize:12, lineHeight:1.5, textAlign:"center", fontFamily:"'DM Sans',sans-serif" }}>{error}</div>}
-              <button style={{ background:"none", border:"none", cursor:"pointer", fontSize:12, color:"#475569", textAlign:"center", fontFamily:"'DM Sans',sans-serif" }}>
+              <button type="button" style={{ background:"none", border:"none", cursor:"pointer", fontSize:12, color:"#475569", textAlign:"center", fontFamily:"'DM Sans',sans-serif" }}>
                 Esqueci minha senha
               </button>
-            </div>
+            </form>
           )}
 
           {tab==="google" && (
