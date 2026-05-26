@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { hasSupabaseConfig, supabase } from "./lib/supabase";
 import * as api from "./lib/api";
 import {
@@ -118,7 +118,13 @@ function useBreakpoint() {
     window.addEventListener("resize", fn);
     return () => window.removeEventListener("resize", fn);
   }, [])
-  return { isMobile: w < 640, isTablet: w >= 640 && w < 1024, isDesktop: w >= 1024, w };
+  return useMemo(() => ({
+    isMobile: w < 768,
+    isTablet: w >= 768 && w < 1024,
+    isDesktop: w >= 1024,
+    isTv: w >= 1600,
+    w,
+  }), [w]);
 }
 
 // ─────────────────────────────────────────────
@@ -297,73 +303,77 @@ const PriorityDot = ({ priority }) => {
 // LOGIN SCREEN
 // ─────────────────────────────────────────────
 function LoginAnimatedBackground() {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const el = canvasRef.current;
+  const loginCanvasRef = useCallback(el => {
     if (!el) return undefined;
-    const ctx = el.getContext("2d");
-    let w = 0;
-    let h = 0;
-    let t = 0;
     let raf = null;
+    let t = 0;
 
-    const resize = () => {
-      w = el.width = el.offsetWidth || 500;
-      h = el.height = el.offsetHeight || 600;
-    };
+    const init = () => {
+      const rect = el.getBoundingClientRect();
+      el.width = rect.width || window.innerWidth;
+      el.height = rect.height || window.innerHeight;
+      const w = el.width;
+      const h = el.height;
+      const ctx = el.getContext("2d");
 
-    const drawLogin = () => {
-      ctx.clearRect(0, 0, w, h);
-      const layers = [
-        { xf:[0,0.08,0.22,0.38,0.5,0.65,0.8,0.94,1], yf:[1,0.72,0.52,0.38,0.3,0.4,0.54,0.7,1], fill:"rgba(12,24,52,0.22)", stroke:"rgba(30,61,110,0.1)" },
-        { xf:[0,0.12,0.3,0.5,0.7,0.88,1], yf:[1,0.8,0.62,0.48,0.6,0.75,1], fill:"rgba(20,38,80,0.15)", stroke:"rgba(40,80,140,0.07)" },
-        { xf:[0,0.2,0.5,0.8,1], yf:[1,0.88,0.72,0.84,1], fill:"rgba(15,28,60,0.1)", stroke:null },
-      ];
-      layers.forEach(layer => {
+      const animate = () => {
+        ctx.clearRect(0, 0, w, h);
+
+        const m1x = [0,0.08,0.22,0.38,0.5,0.65,0.8,0.94,1];
+        const m1y = [1,0.72,0.52,0.38,0.3,0.4,0.54,0.7,1];
         ctx.beginPath();
-        ctx.moveTo(layer.xf[0] * w, layer.yf[0] * h);
-        layer.xf.forEach((x, i) => ctx.lineTo(x * w, layer.yf[i] * h));
+        m1x.forEach((x,i) => i === 0 ? ctx.moveTo(x*w,m1y[i]*h) : ctx.lineTo(x*w,m1y[i]*h));
         ctx.closePath();
-        ctx.fillStyle = layer.fill;
+        ctx.fillStyle = "rgba(12,24,52,0.22)";
         ctx.fill();
-        if (layer.stroke) {
-          ctx.strokeStyle = layer.stroke;
-          ctx.lineWidth = 0.8;
+        ctx.strokeStyle = "rgba(30,61,110,0.1)";
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+
+        const m2x = [0,0.12,0.3,0.5,0.7,0.88,1];
+        const m2y = [1,0.8,0.62,0.48,0.6,0.75,1];
+        ctx.beginPath();
+        m2x.forEach((x,i) => i === 0 ? ctx.moveTo(x*w,m2y[i]*h) : ctx.lineTo(x*w,m2y[i]*h));
+        ctx.closePath();
+        ctx.fillStyle = "rgba(20,38,80,0.15)";
+        ctx.fill();
+
+        const m3x = [0,0.2,0.5,0.8,1];
+        const m3y = [1,0.88,0.72,0.84,1];
+        ctx.beginPath();
+        m3x.forEach((x,i) => i === 0 ? ctx.moveTo(x*w,m3y[i]*h) : ctx.lineTo(x*w,m3y[i]*h));
+        ctx.closePath();
+        ctx.fillStyle = "rgba(15,28,60,0.1)";
+        ctx.fill();
+
+        const cx = w * 0.5;
+        const cy = h * 1.05;
+        for (let i = 1; i <= 6; i++) {
+          const phase = ((t*0.35 + i*0.55) % 1);
+          const r = phase * w * 0.75;
+          const alpha = (1-phase) * 0.06;
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, Math.PI*1.1, Math.PI*1.9);
+          ctx.strokeStyle = `rgba(59,110,168,${alpha})`;
+          ctx.lineWidth = 1.5;
           ctx.stroke();
         }
-      });
 
-      const cx = w * 0.5;
-      const cy = h * 1.05;
-      for (let i = 1; i <= 6; i++) {
-        const phase = ((t * 0.35 + i * 0.55) % 1);
-        const r = phase * w * 0.75;
-        const alpha = (1 - phase) * 0.055;
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, Math.PI * 1.1, Math.PI * 1.9);
-        ctx.strokeStyle = `rgba(59,110,168,${alpha})`;
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-      }
-
-      t += 0.007;
-      raf = requestAnimationFrame(drawLogin);
+        t += 0.007;
+        raf = requestAnimationFrame(animate);
+      };
+      animate();
     };
 
-    resize();
-    drawLogin();
-    window.addEventListener("resize", resize);
-
+    requestAnimationFrame(init);
     return () => {
       if (raf) cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
     };
   }, []);
 
   return (
     <canvas
-      ref={canvasRef}
+      ref={loginCanvasRef}
       style={{
         position: "absolute",
         top: 0,
@@ -372,84 +382,79 @@ function LoginAnimatedBackground() {
         height: "100%",
         pointerEvents: "none",
         zIndex: 0,
+        display: "block",
       }}
     />
   );
 }
 
 function AppAnimatedBackground() {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const el = canvasRef.current;
+  const bgCanvasRef = useCallback(el => {
     if (!el) return undefined;
-    const ctx = el.getContext("2d");
-    let t = 0;
     let raf = null;
+    let t = 0;
 
-    const resize = () => {
-      el.width = el.offsetWidth || 800;
-      el.height = el.offsetHeight || 600;
-    };
-
-    const draw = () => {
+    const init = () => {
+      el.width = window.innerWidth;
+      el.height = window.innerHeight;
+      const ctx = el.getContext("2d");
       const w = el.width;
       const h = el.height;
-      ctx.clearRect(0, 0, w, h);
 
-      const pts = [[0,1],[0.15,0.72],[0.35,0.52],[0.55,0.62],[0.75,0.7],[1,0.78],[1,1]];
-      ctx.beginPath();
-      ctx.moveTo(pts[0][0] * w, pts[0][1] * h);
-      pts.forEach(p => ctx.lineTo(p[0] * w, p[1] * h));
-      ctx.closePath();
-      ctx.fillStyle = "rgba(30,61,110,0.028)";
-      ctx.fill();
+      const animate = () => {
+        ctx.clearRect(0, 0, w, h);
 
-      ctx.beginPath();
-      for (let x = 0; x <= w; x += 3) {
-        const y = 2 + Math.sin(x / w * Math.PI * 8 + t * 1.2) * 1.2;
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.strokeStyle = "rgba(30,61,110,0.07)";
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
-
-      for (let i = 1; i <= 4; i++) {
-        const phase = ((t * 0.28 + i * 0.65) % 1);
-        const r = phase * w * 0.45;
-        const alpha = (1 - phase) * 0.04;
+        const pts = [[0,1],[0.15,0.72],[0.35,0.52],[0.55,0.62],[0.75,0.7],[1,0.78],[1,1]];
         ctx.beginPath();
-        ctx.arc(w * 0.95, h * 1.15, r, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(30,61,110,${alpha})`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
+        pts.forEach((p,i) => i === 0 ? ctx.moveTo(p[0]*w,p[1]*h) : ctx.lineTo(p[0]*w,p[1]*h));
+        ctx.closePath();
+        ctx.fillStyle = "rgba(30,61,110,0.025)";
+        ctx.fill();
 
-      t += 0.007;
-      raf = requestAnimationFrame(draw);
+        ctx.beginPath();
+        for (let x = 0; x <= w; x += 3) {
+          const y = 3 + Math.sin(x/w*Math.PI*8 + t*1.2) * 1.5;
+          x === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+        }
+        ctx.strokeStyle = "rgba(30,61,110,0.06)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        for (let i = 1; i <= 4; i++) {
+          const phase = ((t*0.28 + i*0.65) % 1);
+          const r = phase * w * 0.45;
+          const alpha = (1-phase) * 0.035;
+          ctx.beginPath();
+          ctx.arc(w*0.95, h*1.1, r, 0, Math.PI*2);
+          ctx.strokeStyle = `rgba(30,61,110,${alpha})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+
+        t += 0.007;
+        raf = requestAnimationFrame(animate);
+      };
+      animate();
     };
 
-    resize();
-    draw();
-    window.addEventListener("resize", resize);
-
+    requestAnimationFrame(init);
     return () => {
       if (raf) cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
     };
   }, []);
 
   return (
     <canvas
-      ref={canvasRef}
+      ref={bgCanvasRef}
       style={{
         position: "fixed",
         top: 0,
         left: 0,
-        width: "100%",
-        height: "100%",
+        width: "100vw",
+        height: "100vh",
         pointerEvents: "none",
         zIndex: 0,
+        display: "block",
       }}
     />
   );
@@ -489,14 +494,14 @@ function LoginScreen({ onLogin, onGoogleLogin }) {
   };
 
   return (
-    <div style={{ minHeight:"100vh", background:"#060d1a", display:"flex", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden", fontFamily:"'DM Sans', sans-serif" }}>
+    <div style={{ position:"relative", minHeight:"100vh", background:"#07101f", overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans', sans-serif" }}>
       <LoginAnimatedBackground />
       {/* Background mountain image overlay */}
       <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse at 50% 60%, rgba(30,61,110,0.4) 0%, rgba(6,13,26,0.95) 70%)", zIndex:1 }} />
       {/* Subtle grid */}
       <div style={{ position:"absolute", inset:0, backgroundImage:"linear-gradient(rgba(59,110,168,0.04) 1px, transparent 1px),linear-gradient(90deg, rgba(59,110,168,0.04) 1px, transparent 1px)", backgroundSize:"40px 40px", zIndex:1 }} />
 
-      <div style={{ position:"relative", zIndex:2, width:"100%", maxWidth:420, padding:"0 20px" }}>
+      <div style={{ position:"relative", zIndex:10, width:"100%", maxWidth:420, padding:"0 20px" }}>
         {/* Logo area */}
         <div style={{ textAlign:"center", marginBottom:48 }}>
           <div style={{ display:"flex", justifyContent:"center", marginBottom:20 }}>
@@ -601,7 +606,7 @@ function Sidebar({ currentUser, view, setView, open, setOpen, bp }) {
   const isSolicitante = currentUser.role==="solicitante";
   const isAdmin = ["admin","supervisor"].includes(currentUser.role);
   const collapsed = !open;
-  const w = collapsed?60:220;
+  const w = collapsed?60:bp.isTv?220:200;
 
   const navItems = isSolicitante
     ? [{ key:"my-requests", label:"Minhas Solicitações", icon:"ticket" }, { key:"new", label:"Nova Solicitação", icon:"plus" }]
@@ -615,7 +620,7 @@ function Sidebar({ currentUser, view, setView, open, setOpen, bp }) {
 
   const NavBtn = ({ item }) => (
     <button onClick={()=>{ setView(item.key); if(bp.isTablet) setOpen(false); }}
-      style={{ display:"flex", alignItems:"center", gap:collapsed?0:10, width:"100%", padding:collapsed?"10px 0":"8px 10px", borderRadius:8, border:"none", background:view===item.key?"rgba(59,110,168,0.15)":"transparent", color:view===item.key?"#7eb3e8":"#64748b", cursor:"pointer", fontSize:13, fontWeight:view===item.key?600:400, justifyContent:collapsed?"center":"flex-start", marginBottom:2, fontFamily:"'DM Sans',sans-serif" }}>
+      style={{ display:"flex", alignItems:"center", gap:collapsed?0:10, width:"100%", padding:collapsed?"10px 0":"8px 10px", borderRadius:8, border:"none", background:view===item.key?"rgba(59,110,168,0.15)":"transparent", color:view===item.key?"#7eb3e8":"#64748b", cursor:"pointer", fontSize:bp.isTv?14:13, fontWeight:view===item.key?600:400, justifyContent:collapsed?"center":"flex-start", marginBottom:2, fontFamily:"'DM Sans',sans-serif" }}>
       <Icon name={item.icon} size={16} color={view===item.key?"#7eb3e8":"#64748b"} />
       {!collapsed&&item.label}
     </button>
@@ -669,7 +674,7 @@ function Sidebar({ currentUser, view, setView, open, setOpen, bp }) {
 function Topbar({ currentUser, view, setSidebarOpen, bp, onLogout }) {
   const titles = { dashboard:"Dashboard", requests:"Solicitações", historico:"Histórico", new:"Nova Solicitação", detail:"Solicitação", "my-requests":"Minhas Solicitações", "admin-users":"Usuários", "admin-teams":"Equipes", "admin-types":"Tipos", auditoria:"Auditoria" };
   return (
-    <div style={{ background:"#fff", borderBottom:"1px solid #e2e8f0", padding:"0 20px", height:56, display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
+    <div style={{ background:"#fff", borderBottom:"1px solid #e2e8f0", padding:"0 20px", height:bp.isTv?64:56, display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
       {!bp.isMobile&&<button onClick={()=>setSidebarOpen(v=>!v)} style={{ background:"none", border:"none", cursor:"pointer", padding:6, borderRadius:6, color:"#64748b" }}><Icon name="menu" size={18} color="#64748b" /></button>}
       {bp.isMobile&&<div style={{ display:"flex", alignItems:"center", gap:8 }}><ApexLogoMark size={26} /><span style={{ fontFamily:"'Outfit',sans-serif", fontWeight:600, fontSize:13, letterSpacing:"0.06em", color:"#0f172a" }}>APEX</span></div>}
       <h1 style={{ fontSize:bp.isMobile?14:15, fontWeight:600, color:"#0f172a", flex:1, fontFamily:"'Outfit',sans-serif", letterSpacing:"0.02em" }}>{!bp.isMobile&&titles[view]}</h1>
@@ -798,8 +803,8 @@ function StatusStepper({ status, bp }) {
 // ─────────────────────────────────────────────
 function MetricCard({ label, value, color, sub, bp }) {
   return (
-    <div style={{ background:"#fff", borderRadius:12, padding:bp?.isMobile?"12px 14px":"16px 18px", border:"1px solid #e2e8f0", textAlign:"center" }}>
-      <div style={{ fontSize:bp?.isMobile?22:26, fontWeight:700, color, fontFamily:"'Outfit',sans-serif" }}>{value}</div>
+    <div style={{ background:"#fff", borderRadius:12, padding:bp?.isMobile?"12px 14px":bp?.isTv?"20px":"16px 18px", border:"1px solid #e2e8f0", textAlign:"center" }}>
+      <div style={{ fontSize:bp?.isMobile?22:bp?.isTv?32:26, fontWeight:700, color, fontFamily:"'Outfit',sans-serif" }}>{value}</div>
       <div style={{ fontSize:11, color:"#64748b", marginTop:2, fontFamily:"'DM Sans',sans-serif" }}>{label}</div>
       {sub&&<div style={{ fontSize:10, color:"#94a3b8", marginTop:2, fontFamily:"'DM Sans',sans-serif" }}>{sub}</div>}
     </div>
@@ -1380,9 +1385,9 @@ function Dashboard({ requests, currentUser, openRequest, bp, users = [], teams =
     <div style={{ paddingBottom: bp.isMobile ? 80 : 0 }}>
       <div style={{ display:"grid", gridTemplateColumns:bp.isMobile?"repeat(2,1fr)":"repeat(5,1fr)", gap:12, marginBottom:20 }}>
         {stats.map(s => (
-          <div key={s.label} style={{ background:"#fff", borderRadius:12, padding:"14px 16px", border:"1px solid #e2e8f0" }}>
+          <div key={s.label} style={{ background:"#fff", borderRadius:12, padding:bp.isTv?"20px":"14px 16px", border:"1px solid #e2e8f0" }}>
             <div style={{ fontSize:11, color:"#64748b", marginBottom:6, fontFamily:"'DM Sans',sans-serif" }}>{s.label}</div>
-            <div style={{ fontSize:bp.isMobile?24:28, fontWeight:700, color:s.value>0?s.color:"#94a3b8", fontFamily:"'Outfit',sans-serif" }}>{s.value}</div>
+            <div style={{ fontSize:bp.isMobile?24:bp.isTv?32:28, fontWeight:700, color:s.value>0?s.color:"#94a3b8", fontFamily:"'Outfit',sans-serif" }}>{s.value}</div>
           </div>
         ))}
       </div>
@@ -1391,7 +1396,7 @@ function Dashboard({ requests, currentUser, openRequest, bp, users = [], teams =
         <div style={{ display:"grid", gridTemplateColumns:bp.isDesktop?"1fr 1fr":"1fr", gap:16, marginBottom:20 }}>
           <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"18px 20px" }}>
             <div style={{ fontWeight:600, fontSize:13, marginBottom:16, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Volume por Mês</div>
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer width="100%" height={bp.isTv?220:180}>
               <LineChart data={byMonth}>
                 <XAxis dataKey="name" tick={{ fontSize:11, fill:"#94a3b8" }} />
                 <YAxis tick={{ fontSize:11, fill:"#94a3b8" }} allowDecimals={false} />
@@ -1405,7 +1410,7 @@ function Dashboard({ requests, currentUser, openRequest, bp, users = [], teams =
           {byTeam.length > 0 && (
             <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"18px 20px" }}>
               <div style={{ fontWeight:600, fontSize:13, marginBottom:16, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Chamados por Equipe</div>
-              <ResponsiveContainer width="100%" height={180}>
+              <ResponsiveContainer width="100%" height={bp.isTv?220:180}>
                 <BarChart data={byTeam} barSize={20}>
                   <XAxis dataKey="name" tick={{ fontSize:11, fill:"#94a3b8" }} />
                   <YAxis tick={{ fontSize:11, fill:"#94a3b8" }} allowDecimals={false} />
@@ -1421,7 +1426,7 @@ function Dashboard({ requests, currentUser, openRequest, bp, users = [], teams =
             <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"18px 20px" }}>
               <div style={{ fontWeight:600, fontSize:13, marginBottom:16, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Distribuição por Status</div>
               <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-                <ResponsiveContainer width="50%" height={160}>
+                <ResponsiveContainer width="50%" height={bp.isTv?220:160}>
                   <PieChart>
                     <Pie data={byStatus} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="value" paddingAngle={2}>
                       {byStatus.map((entry, i) => <Cell key={i} fill={entry.color} />)}
@@ -1546,7 +1551,7 @@ function RequestsView({ requests, currentUser, openRequest, setView, bp, teams =
           {mode==="kanban"&&<button onClick={()=>setShowFin(v=>!v)} style={{ padding:"5px 12px", borderRadius:20, border:`1.5px solid ${showFin?"#16a34a":"#e2e8f0"}`, background:showFin?"#f0fdf4":"#fff", color:showFin?"#16a34a":"#64748b", cursor:"pointer", fontSize:12, fontWeight:showFin?600:400, marginLeft:"auto", fontFamily:"'DM Sans',sans-serif" }}>{showFin?"Ocultar finalizados":"Mostrar finalizados"}</button>}
         </div>
       </div>
-      {mode==="kanban"&&!bp.isMobile&&<KanbanView requests={base} openRequest={openRequest} kanbanCols={kanbanCols} updateRequest={updateRequest} teams={teams} users={users} />}
+      {mode==="kanban"&&!bp.isMobile&&<KanbanView requests={base} openRequest={openRequest} kanbanCols={kanbanCols} updateRequest={updateRequest} teams={teams} users={users} bp={bp} />}
       {mode==="list"&&<div style={{ display:"flex", flexDirection:"column", gap:10 }}>{base.map(r=><RequestCard key={r.id} r={r} onClick={()=>openRequest(r.id)} teams={teams} users={users} />)}{!base.length&&<div style={{ background:"#fff", borderRadius:12, border:"2px dashed #e2e8f0", padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhuma solicitação encontrada.</div>}</div>}
       {mode==="table"&&!bp.isMobile&&<TableView requests={base} openRequest={openRequest} teams={teams} users={users} />}
     </div>
@@ -1608,7 +1613,7 @@ function DroppableColumn({ col, activeId, children }) {
   );
 }
 
-function KanbanView({ requests, openRequest, kanbanCols, updateRequest, teams = TEAMS, users = USERS }) {
+function KanbanView({ requests, openRequest, kanbanCols, updateRequest, teams = TEAMS, users = USERS, bp }) {
   const [activeId, setActiveId] = useState(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint:{ distance:8 } }));
   const activeRequest = activeId ? requests.find(r => r.id === activeId) : null;
@@ -1638,7 +1643,7 @@ function KanbanView({ requests, openRequest, kanbanCols, updateRequest, teams = 
           const colRequests = requests.filter(r => r.status === col.key);
           const isClosed = ["finalizada","cancelada"].includes(col.key);
           return (
-            <div key={col.key} style={{ minWidth:220, width:220, flexShrink:0, opacity:isClosed?0.85:1 }}>
+            <div key={col.key} style={{ minWidth:bp?.isTv?260:220, width:bp?.isTv?260:220, flexShrink:0, opacity:isClosed?0.85:1 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, padding:"6px 8px", borderRadius:8, background:isClosed?"#f8fafc":"transparent" }}>
                 <div style={{ width:9, height:9, borderRadius:"50%", background:col.color, flexShrink:0 }} />
                 <span style={{ fontWeight:600, fontSize:12, color:"#374151", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{col.label}</span>
@@ -1664,7 +1669,7 @@ function KanbanView({ requests, openRequest, kanbanCols, updateRequest, teams = 
 
       <DragOverlay>
         {activeRequest ? (
-          <div style={{ background:"#fff", borderRadius:10, border:"1px solid #e2e8f0", padding:"11px 13px", borderLeft:`3px solid ${teamById(teams,activeRequest.team_id)?.color||"#e2e8f0"}`, boxShadow:"0 16px 40px rgba(0,0,0,0.15)", width:220, cursor:"grabbing", fontFamily:"'DM Sans',sans-serif" }}>
+          <div style={{ background:"#fff", borderRadius:10, border:"1px solid #e2e8f0", padding:"11px 13px", borderLeft:`3px solid ${teamById(teams,activeRequest.team_id)?.color||"#e2e8f0"}`, boxShadow:"0 16px 40px rgba(0,0,0,0.15)", width:bp?.isTv?260:220, cursor:"grabbing", fontFamily:"'DM Sans',sans-serif" }}>
             <div style={{ fontSize:10, color:"#94a3b8", marginBottom:3, fontFamily:"monospace" }}>{activeRequest.protocol}</div>
             <div style={{ fontWeight:600, fontSize:13, lineHeight:1.4 }}>{activeRequest.title}</div>
           </div>
