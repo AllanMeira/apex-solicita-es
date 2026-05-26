@@ -2520,7 +2520,8 @@ export default function ApexSolicitacoes() {
         }
       }
     }).catch(err => {
-      console.error('getSession error:', err)
+      if (cachedProfile?.id) console.warn('getSession timeout; usando perfil em cache:', err)
+      else console.error('getSession error:', err)
       if (mounted) {
         if (timeoutId) clearTimeout(timeoutId)
         if (!cachedProfile?.id) {
@@ -2610,15 +2611,23 @@ export default function ApexSolicitacoes() {
 
   const loadAllData = async () => {
     setDataLoading(true);
+    const safeLoad = (label, promise, fallback, ms = 9000) => Promise.race([
+      promise.catch(err => {
+        console.warn(`${label} error:`, err);
+        return fallback;
+      }),
+      new Promise(resolve => setTimeout(() => {
+        console.warn(`${label} timeout; usando fallback`);
+        resolve(fallback);
+      }, ms)),
+    ]);
+
     try {
       const [reqs, profs, tms, types] = await Promise.all([
-        api.getRequests(),
-        api.getProfiles().catch(err => {
-          console.error("getProfiles error:", err);
-          return [];
-        }),
-        api.getTeams(),
-        api.getRequestTypes(),
+        safeLoad("getRequests", api.getRequests(), []),
+        safeLoad("getProfiles", api.getProfiles(), users?.length ? users : []),
+        safeLoad("getTeams", api.getTeams(), teams?.length ? teams : TEAMS),
+        safeLoad("getRequestTypes", api.getRequestTypes(), requestTypes?.length ? requestTypes : REQUEST_TYPES),
       ]);
       // Normalizar requests para o formato que o App espera
       const normalized = reqs.map(r => ({
