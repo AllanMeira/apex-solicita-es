@@ -45,10 +45,10 @@ const restSelect = async (table, params = "", ms = 18000) => {
 
 const withRestFallback = async (label, supabasePromise, restPromise) => {
   try {
-    return await withTimeout(supabasePromise, 12000, `${label} timeout`);
+    return await restPromise();
   } catch (err) {
-    if (isDev) console.warn(`${label} via supabase-js falhou; tentando REST:`, err);
-    return restPromise();
+    if (isDev) console.warn(`${label} via REST falhou; tentando supabase-js:`, err);
+    return withTimeout(supabasePromise, 12000, `${label} timeout`);
   }
 };
 
@@ -311,13 +311,16 @@ export async function createAuditLog({
 }
 
 export async function getAuditLogs() {
-  const { data, error } = await supabase
+  return withRestFallback(
+    "getAuditLogs",
+    supabase
     .from("audit_logs")
     .select("*")
     .order("created_at", { ascending: false })
-    .limit(200);
-  if (error) throw error;
-  return data;
+    .limit(200)
+    .then(unwrap),
+    () => restSelect("audit_logs", "?select=*&order=created_at.desc&limit=200")
+  );
 }
 
 export async function getComments(requestId) {

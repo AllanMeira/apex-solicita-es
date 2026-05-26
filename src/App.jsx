@@ -2614,7 +2614,7 @@ export default function ApexSolicitacoes() {
 
   const loadAllData = async () => {
     setDataLoading(true);
-    const safeLoad = (label, promise, fallback, ms = 35000) => Promise.race([
+    const safeLoad = (label, promise, fallback, ms = 12000) => Promise.race([
       promise.catch(err => {
         if (import.meta.env.DEV) console.warn(`${label} error:`, err);
         return fallback;
