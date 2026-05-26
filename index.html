@@ -11,19 +11,19 @@
 <script>
   (function() {
     try {
-      var keep = { 'apex-session': true, 'apex-profile': true };
-      var toRemove = [];
+      // Limpa apenas resíduos comprovadamente problemáticos de versões antigas.
+      // Preserva 'apex-session' e 'apex-profile' da versão atual.
+      var legacyKeys = [];
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        if (k && !keep[k] && (
-          k.startsWith('apex-') ||
-          k.startsWith('sb-') ||
-          k.indexOf('supabase') !== -1
-        )) {
-          toRemove.push(k);
+        if (!k) continue;
+        // Remove apenas chaves do padrão antigo sb-* (Supabase v1)
+        // que NÃO sejam relacionadas ao projeto atual.
+        if (k.indexOf('sb-bofdapvhuehc1hdmkpsu-auth-token-code-verifier-old') === 0) {
+          legacyKeys.push(k);
         }
       }
-      toRemove.forEach(function(k) { localStorage.removeItem(k); });
+      legacyKeys.forEach(function(k) { localStorage.removeItem(k); });
     } catch(e) {}
   })();
 </script>

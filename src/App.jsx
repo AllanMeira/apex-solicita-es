@@ -2876,11 +2876,22 @@ export default function ApexSolicitacoes() {
   };
 
   const handleLogout = async () => {
-    await api.signOut();
-    clearProfileCache();
-    setLoggedIn(false);
-    setCurrentUser(null);
-    setView("dashboard");
+    try {
+      await api.signOut();
+    } catch (e) {
+      console.warn("signOut warning:", e);
+    } finally {
+      clearProfileCache();
+      try {
+        localStorage.removeItem("apex-session");
+        localStorage.removeItem("apex-profile");
+      } catch {}
+      setLoggedIn(false);
+      setCurrentUser(null);
+      setView("dashboard");
+      // Força reload completo na tela de login (limpa estado React inteiro)
+      window.location.href = "/";
+    }
   };
 
   const selectedRequest = requests.find(r => r.id === selectedId);

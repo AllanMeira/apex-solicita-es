@@ -9,7 +9,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: false,
     storageKey: 'apex-session',
-    flowType: 'implicit',
+    flowType: 'pkce',
   }
 })
 

@@ -1,9 +1,5 @@
 import { supabase } from "./supabase";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const isDev = import.meta.env.DEV;
-
 const unwrap = ({ data, error }) => {
   if (error) throw error;
   return data;
@@ -13,44 +9,6 @@ const withTimeout = (promise, ms, message) => Promise.race([
   promise,
   new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
 ]);
-
-const getStoredAccessToken = () => {
-  try {
-    const raw = localStorage.getItem("apex-session");
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.access_token || parsed?.currentSession?.access_token || null;
-  } catch {
-    return null;
-  }
-};
-
-const restSelect = async (table, params = "", ms = 18000) => {
-  const token = getStoredAccessToken();
-  const url = `${supabaseUrl}/rest/v1/${table}${params}`;
-  const response = await withTimeout(
-    fetch(url, {
-      headers: {
-        apikey: supabaseAnonKey,
-        Authorization: `Bearer ${token || supabaseAnonKey}`,
-      },
-    }),
-    ms,
-    `Tempo esgotado ao carregar ${table}`
-  );
-  const data = await response.json();
-  if (!response.ok) throw new Error(data?.message || data?.error || `Erro ao carregar ${table}`);
-  return data || [];
-};
-
-const withRestFallback = async (label, supabasePromise, restPromise) => {
-  try {
-    return await restPromise();
-  } catch (err) {
-    if (isDev) console.warn(`${label} via REST falhou; tentando supabase-js:`, err);
-    return withTimeout(supabasePromise, 12000, `${label} timeout`);
-  }
-};
 
 export async function getSession() {
   const { data, error } = await withTimeout(
@@ -63,11 +21,6 @@ export async function getSession() {
 }
 
 export async function signInWithEmail(email, password) {
-  try {
-    localStorage.removeItem("apex-session");
-  } catch {
-    // Ignore storage errors and let Supabase continue the login flow.
-  }
   const { data, error } = await withTimeout(
     supabase.auth.signInWithPassword({
       email,
@@ -149,11 +102,13 @@ export async function getProfile(userId) {
 }
 
 export async function getProfiles() {
-  return withRestFallback(
-    "getProfiles",
-    supabase.from("profiles").select("*").order("full_name").then(unwrap),
-    () => restSelect("profiles", "?select=*&order=full_name.asc")
+  const { data, error } = await withTimeout(
+    supabase.from("profiles").select("*").order("full_name"),
+    12000,
+    "Tempo esgotado ao carregar perfis"
   );
+  if (error) throw error;
+  return data || [];
 }
 
 export async function getAvailableAssignees() {
@@ -223,11 +178,13 @@ export async function uploadAvatar(userId, file) {
 }
 
 export async function getTeams() {
-  return withRestFallback(
-    "getTeams",
-    supabase.from("teams").select("*").order("name").then(unwrap),
-    () => restSelect("teams", "?select=*&order=name.asc")
+  const { data, error } = await withTimeout(
+    supabase.from("teams").select("*").order("name"),
+    12000,
+    "Tempo esgotado ao carregar equipes"
   );
+  if (error) throw error;
+  return data || [];
 }
 
 export async function createTeam(team) {
@@ -235,11 +192,13 @@ export async function createTeam(team) {
 }
 
 export async function getRequestTypes() {
-  return withRestFallback(
-    "getRequestTypes",
-    supabase.from("request_types").select("*").order("name").then(unwrap),
-    () => restSelect("request_types", "?select=*&order=name.asc")
+  const { data, error } = await withTimeout(
+    supabase.from("request_types").select("*").order("name"),
+    12000,
+    "Tempo esgotado ao carregar tipos"
   );
+  if (error) throw error;
+  return data || [];
 }
 
 export async function createRequestType(type) {
@@ -248,15 +207,13 @@ export async function createRequestType(type) {
 
 export async function getRequests() {
   const select = "*,team:teams(*),type:request_types(*),requester:profiles!requests_requester_id_fkey(*),assignee:profiles!requests_assignee_id_fkey(*)";
-  return withRestFallback(
-    "getRequests",
-    supabase
-    .from("requests")
-    .select(select)
-    .order("updated_at", { ascending: false })
-    .then(unwrap),
-    () => restSelect("requests", `?select=${encodeURIComponent(select)}&order=updated_at.desc`)
+  const { data, error } = await withTimeout(
+    supabase.from("requests").select(select).order("updated_at", { ascending: false }),
+    15000,
+    "Tempo esgotado ao carregar solicitações"
   );
+  if (error) throw error;
+  return data || [];
 }
 
 export async function createRequest(request) {
@@ -311,16 +268,13 @@ export async function createAuditLog({
 }
 
 export async function getAuditLogs() {
-  return withRestFallback(
-    "getAuditLogs",
-    supabase
-    .from("audit_logs")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(200)
-    .then(unwrap),
-    () => restSelect("audit_logs", "?select=*&order=created_at.desc&limit=200")
+  const { data, error } = await withTimeout(
+    supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(200),
+    12000,
+    "Tempo esgotado ao carregar auditoria"
   );
+  if (error) throw error;
+  return data || [];
 }
 
 export async function getComments(requestId) {
