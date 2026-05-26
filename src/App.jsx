@@ -1300,7 +1300,37 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
               )}
             </div>
           )}
-          {canEdit&&<div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"16px 18px" }}><div style={{ fontWeight:600, fontSize:13, marginBottom:14, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>Ações</div><div style={{ display:"flex", flexDirection:"column", gap:10 }}><Field label="Status"><select value={request.status} onChange={e=>updateRequest(request.id,{status:e.target.value})} style={inp}>{STATUSES.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select></Field><Field label="Prioridade"><select value={request.priority} onChange={e=>updateRequest(request.id,{priority:e.target.value})} style={inp}>{PRIORITIES.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}</select></Field><Field label="Responsável"><select value={request.assignee_id||""} onChange={e=>updateRequest(request.id,{assignee_id:e.target.value||null})} style={inp}><option value="">Sem responsável</option>{teamMembers.map(u=><option key={u.id} value={u.id}>{u.full_name}</option>)}</select></Field></div></div>}
+          {canEdit&&(
+            <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"16px 18px" }}>
+              <div style={{ fontWeight:600, fontSize:13, marginBottom:14, color:"#374151", fontFamily:"'Outfit',sans-serif" }}>Ações</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                <Field label="Status">
+                  <select
+                    value={request.status}
+                    onChange={e=>{
+                      console.log('onChange status:', e.target.value);
+                      console.log('updateRequest prop:', typeof updateRequest);
+                      updateRequest(request.id, { status:e.target.value });
+                    }}
+                    style={inp}
+                  >
+                    {STATUSES.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}
+                  </select>
+                </Field>
+                <Field label="Prioridade">
+                  <select value={request.priority} onChange={e=>updateRequest(request.id,{priority:e.target.value})} style={inp}>
+                    {PRIORITIES.map(p=><option key={p.key} value={p.key}>{p.label}</option>)}
+                  </select>
+                </Field>
+                <Field label="Responsável">
+                  <select value={request.assignee_id||""} onChange={e=>updateRequest(request.id,{assignee_id:e.target.value||null})} style={inp}>
+                    <option value="">Sem responsável</option>
+                    {teamMembers.map(u=><option key={u.id} value={u.id}>{u.full_name}</option>)}
+                  </select>
+                </Field>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -2602,9 +2632,25 @@ export default function ApexSolicitacoes() {
   };
 
   const updateRequestFn = async (id, patch) => {
+    console.log('updateRequestFn called:', id, patch);
+    const oldRequest = requests.find(r => r.id === id);
+    const optimisticUpdatedAt = new Date().toISOString();
+    const resolveAssignee = assigneeId =>
+      ((users?.length ? users : USERS).find(u => u.id === assigneeId) || null);
+
+    setRequests(prev => prev.map(r =>
+      r.id === id ? {
+        ...r,
+        ...patch,
+        _assignee: Object.prototype.hasOwnProperty.call(patch, "assignee_id")
+          ? resolveAssignee(patch.assignee_id)
+          : r._assignee,
+        updated_at: optimisticUpdatedAt
+      } : r
+    ));
+
     try {
-      const oldRequest = requests.find(r => r.id === id);
-      await api.updateRequest(id, patch);
+      const updatedRequest = await api.updateRequest(id, patch);
       if (currentUser.role === "supervisor") {
         await api.createAuditLog({
           actorId: currentUser.id,
@@ -2624,15 +2670,18 @@ export default function ApexSolicitacoes() {
       setRequests(prev => prev.map(r =>
         r.id === id ? {
           ...r,
-          ...patch,
+          ...updatedRequest,
           _assignee: Object.prototype.hasOwnProperty.call(patch, "assignee_id")
-            ? ((users?.length ? users : USERS).find(u => u.id === patch.assignee_id) || null)
+            ? resolveAssignee(updatedRequest.assignee_id)
             : r._assignee,
-          updated_at: new Date().toISOString()
         } : r
       ));
       showToast('Solicitação atualizada.');
     } catch (err) {
+      console.error('updateRequestFn error:', err);
+      if (oldRequest) {
+        setRequests(prev => prev.map(r => r.id === id ? oldRequest : r));
+      }
       showToast('Erro ao atualizar solicitação.', 'error');
     }
   };
