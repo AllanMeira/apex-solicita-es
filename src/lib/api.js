@@ -1,5 +1,8 @@
 import { supabase } from "./supabase";
 
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
 const unwrap = ({ data, error }) => {
   if (error) throw error;
   return data;
@@ -9,6 +12,44 @@ const withTimeout = (promise, ms, message) => Promise.race([
   promise,
   new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
 ]);
+
+const getStoredAccessToken = () => {
+  try {
+    const raw = localStorage.getItem("apex-session");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.access_token || parsed?.currentSession?.access_token || null;
+  } catch {
+    return null;
+  }
+};
+
+const restSelect = async (table, params = "", ms = 18000) => {
+  const token = getStoredAccessToken();
+  const url = `${supabaseUrl}/rest/v1/${table}${params}`;
+  const response = await withTimeout(
+    fetch(url, {
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${token || supabaseAnonKey}`,
+      },
+    }),
+    ms,
+    `Tempo esgotado ao carregar ${table}`
+  );
+  const data = await response.json();
+  if (!response.ok) throw new Error(data?.message || data?.error || `Erro ao carregar ${table}`);
+  return data || [];
+};
+
+const withRestFallback = async (label, supabasePromise, restPromise) => {
+  try {
+    return await withTimeout(supabasePromise, 12000, `${label} timeout`);
+  } catch (err) {
+    console.warn(`${label} via supabase-js falhou; tentando REST:`, err);
+    return restPromise();
+  }
+};
 
 export async function getSession() {
   const { data, error } = await withTimeout(
@@ -107,7 +148,11 @@ export async function getProfile(userId) {
 }
 
 export async function getProfiles() {
-  return unwrap(await supabase.from("profiles").select("*").order("full_name"));
+  return withRestFallback(
+    "getProfiles",
+    supabase.from("profiles").select("*").order("full_name").then(unwrap),
+    () => restSelect("profiles", "?select=*&order=full_name.asc")
+  );
 }
 
 export async function getAvailableAssignees() {
@@ -177,7 +222,11 @@ export async function uploadAvatar(userId, file) {
 }
 
 export async function getTeams() {
-  return unwrap(await supabase.from("teams").select("*").order("name"));
+  return withRestFallback(
+    "getTeams",
+    supabase.from("teams").select("*").order("name").then(unwrap),
+    () => restSelect("teams", "?select=*&order=name.asc")
+  );
 }
 
 export async function createTeam(team) {
@@ -185,7 +234,11 @@ export async function createTeam(team) {
 }
 
 export async function getRequestTypes() {
-  return unwrap(await supabase.from("request_types").select("*").order("name"));
+  return withRestFallback(
+    "getRequestTypes",
+    supabase.from("request_types").select("*").order("name").then(unwrap),
+    () => restSelect("request_types", "?select=*&order=name.asc")
+  );
 }
 
 export async function createRequestType(type) {
@@ -193,10 +246,16 @@ export async function createRequestType(type) {
 }
 
 export async function getRequests() {
-  return unwrap(await supabase
+  const select = "*,team:teams(*),type:request_types(*),requester:profiles!requests_requester_id_fkey(*),assignee:profiles!requests_assignee_id_fkey(*)";
+  return withRestFallback(
+    "getRequests",
+    supabase
     .from("requests")
-    .select("*, team:teams(*), type:request_types(*), requester:profiles!requests_requester_id_fkey(*), assignee:profiles!requests_assignee_id_fkey(*)")
-    .order("updated_at", { ascending: false }));
+    .select(select)
+    .order("updated_at", { ascending: false })
+    .then(unwrap),
+    () => restSelect("requests", `?select=${encodeURIComponent(select)}&order=updated_at.desc`)
+  );
 }
 
 export async function createRequest(request) {
