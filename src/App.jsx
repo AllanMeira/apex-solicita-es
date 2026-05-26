@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { hasSupabaseConfig, supabase } from "./lib/supabase";
 import * as api from "./lib/api";
+import { useBreakpoint as useBreakpointName } from "./hooks/useBreakpoint";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -111,20 +112,15 @@ const Icon = ({ name, size=16, color="currentColor", style={} }) => {
 // ─────────────────────────────────────────────
 // RESPONSIVE HOOK
 // ─────────────────────────────────────────────
-function useBreakpoint() {
-  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
-  useEffect(() => {
-    const fn = () => setW(window.innerWidth);
-    window.addEventListener("resize", fn);
-    return () => window.removeEventListener("resize", fn);
-  }, [])
+function useResponsiveBreakpoint() {
+  const name = useBreakpointName();
   return useMemo(() => ({
-    isMobile: w < 768,
-    isTablet: w >= 768 && w < 1024,
-    isDesktop: w >= 1024,
-    isTv: w >= 1600,
-    w,
-  }), [w]);
+    name,
+    isMobile: name === "mobile",
+    isTablet: name === "tablet",
+    isDesktop: name === "desktop" || name === "tv",
+    isTv: name === "tv",
+  }), [name]);
 }
 
 // ─────────────────────────────────────────────
@@ -612,8 +608,14 @@ function Sidebar({ currentUser, view, setView, open, setOpen, bp }) {
   const [adminOpen, setAdminOpen] = useState(true);
   const isSolicitante = currentUser.role==="solicitante";
   const isAdmin = ["admin","supervisor"].includes(currentUser.role);
-  const collapsed = !open;
-  const w = collapsed?60:bp.isTv?220:200;
+  const collapsed = false;
+  const w = bp.isTv ? 320 : bp.isMobile || bp.isTablet ? 260 : 220;
+
+  useEffect(() => {
+    if (!bp.isTv || !open) return;
+    const id = setTimeout(() => setOpen(false), 3000);
+    return () => clearTimeout(id);
+  }, [bp.isTv, open, setOpen]);
 
   const navItems = isSolicitante
     ? [{ key:"my-requests", label:"Minhas Solicitações", icon:"ticket" }, { key:"new", label:"Nova Solicitação", icon:"plus" }]
@@ -626,17 +628,43 @@ function Sidebar({ currentUser, view, setView, open, setOpen, bp }) {
   ];
 
   const NavBtn = ({ item }) => (
-    <button onClick={()=>{ setView(item.key); if(bp.isTablet) setOpen(false); }}
-      style={{ display:"flex", alignItems:"center", gap:collapsed?0:10, width:"100%", padding:collapsed?"10px 0":"8px 10px", borderRadius:8, border:"none", background:view===item.key?"rgba(59,110,168,0.15)":"transparent", color:view===item.key?"#7eb3e8":"#64748b", cursor:"pointer", fontSize:bp.isTv?14:13, fontWeight:view===item.key?600:400, justifyContent:collapsed?"center":"flex-start", marginBottom:2, fontFamily:"'DM Sans',sans-serif" }}>
-      <Icon name={item.icon} size={16} color={view===item.key?"#7eb3e8":"#64748b"} />
+    <button onClick={()=>{ setView(item.key); if(bp.isMobile || bp.isTablet || bp.isTv) setOpen(false); }}
+      style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:bp.isTv?"13px 14px":"9px 10px", borderRadius:8, border:"none", background:view===item.key?"rgba(59,110,168,0.15)":"transparent", color:view===item.key?"#7eb3e8":"#64748b", cursor:"pointer", fontSize:bp.isTv?"var(--fs-sm)":13, fontWeight:view===item.key?600:400, justifyContent:"flex-start", marginBottom:4, fontFamily:"'DM Sans',sans-serif" }}>
+      <Icon name={item.icon} size={bp.isTv?22:16} color={view===item.key?"#7eb3e8":"#64748b"} />
       {!collapsed&&item.label}
     </button>
   );
 
   return (
     <>
-      {bp.isTablet&&open&&<div onClick={()=>setOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.4)", zIndex:99 }} />}
-      <div style={{ width:w, minWidth:w, background:"#0a1220", display:"flex", flexDirection:"column", overflow:"hidden", transition:"width 0.2s, min-width 0.2s", height:"100vh", zIndex:100, position:bp.isTablet?"fixed":"relative", flexShrink:0, borderRight:"1px solid rgba(255,255,255,0.05)" }}>
+      {bp.isTv && !open && (
+        <div onMouseEnter={()=>setOpen(true)} style={{ position:"fixed", left:0, top:0, bottom:0, width:8, zIndex:1100 }} />
+      )}
+      {(bp.isMobile || bp.isTablet) && open && (
+        <div onClick={()=>setOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:998, backdropFilter:"blur(2px)" }} />
+      )}
+      <div
+        onMouseEnter={()=>bp.isTv&&setOpen(true)}
+        onMouseLeave={()=>bp.isTv&&setOpen(false)}
+        style={{
+          width:w,
+          minWidth:w,
+          background:"#0a1220",
+          display:"flex",
+          flexDirection:"column",
+          overflow:"hidden",
+          transition:"transform 0.3s ease, width 0.2s, min-width 0.2s",
+          height:"100vh",
+          zIndex:1000,
+          position:(bp.isMobile || bp.isTablet || bp.isTv)?"fixed":"relative",
+          left:0,
+          top:0,
+          flexShrink:0,
+          borderRight:"1px solid rgba(255,255,255,0.05)",
+          transform:(bp.isMobile || bp.isTablet || bp.isTv) && !open ? "translateX(-100%)" : "translateX(0)",
+          boxShadow:(bp.isMobile || bp.isTablet || bp.isTv) && open ? "16px 0 48px rgba(0,0,0,0.22)" : "none",
+        }}
+      >
         {/* Logo */}
         <div style={{ padding:collapsed?"14px 10px":"18px 16px 14px", borderBottom:"1px solid rgba(255,255,255,0.06)", display:"flex", alignItems:"center", justifyContent:collapsed?"center":"flex-start" }}>
           <ApexLogoFull collapsed={collapsed} />
@@ -678,25 +706,42 @@ function Sidebar({ currentUser, view, setView, open, setOpen, bp }) {
 // ─────────────────────────────────────────────
 // TOPBAR
 // ─────────────────────────────────────────────
-function Topbar({ currentUser, view, setSidebarOpen, bp, onLogout }) {
+function Topbar({ currentUser, view, setSidebarOpen, sidebarOpen, bp, onLogout }) {
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [clock, setClock] = useState(() => new Date());
+  useEffect(() => {
+    if (!bp.isTv) return;
+    const id = setInterval(() => setClock(new Date()), 1000);
+    return () => clearInterval(id);
+  }, [bp.isTv]);
   const titles = { dashboard:"Dashboard", requests:"Solicitações", historico:"Histórico", new:"Nova Solicitação", detail:"Solicitação", "my-requests":"Minhas Solicitações", "admin-users":"Usuários", "admin-teams":"Equipes", "admin-types":"Tipos", auditoria:"Auditoria" };
   return (
-    <div style={{ background:"#fff", borderBottom:"1px solid #e2e8f0", padding:"0 20px", height:bp.isTv?64:56, display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
-      {!bp.isMobile&&<button onClick={()=>setSidebarOpen(v=>!v)} style={{ background:"none", border:"none", cursor:"pointer", padding:6, borderRadius:6, color:"#64748b" }}><Icon name="menu" size={18} color="#64748b" /></button>}
+    <div style={{ background:"#fff", borderBottom:"1px solid #e2e8f0", padding:bp.isMobile?"0 14px 0 64px":bp.isTv?"0 36px":"0 20px", height:bp.isTv?88:56, display:"flex", alignItems:"center", gap:12, flexShrink:0 }}>
+      {bp.isMobile&&<button onClick={()=>setSidebarOpen(v=>!v)} style={{ position:"fixed", top:12, left:12, zIndex:1001, width:40, height:40, borderRadius:8, background:"rgba(15,28,60,0.9)", border:"1px solid rgba(59,110,168,0.3)", color:"#e2e8f0", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><Icon name={sidebarOpen?"x":"menu"} size={20} color="#e2e8f0" /></button>}
       {bp.isMobile&&<div style={{ display:"flex", alignItems:"center", gap:8 }}><ApexLogoMark size={26} /><span style={{ fontFamily:"'Outfit',sans-serif", fontWeight:600, fontSize:13, letterSpacing:"0.06em", color:"#0f172a" }}>APEX</span></div>}
-      <h1 style={{ fontSize:bp.isMobile?14:15, fontWeight:600, color:"#0f172a", flex:1, fontFamily:"'Outfit',sans-serif", letterSpacing:"0.02em" }}>{!bp.isMobile&&titles[view]}</h1>
+      <h1 style={{ fontSize:bp.isTv?"var(--fs-lg)":bp.isMobile?14:15, fontWeight:600, color:"#0f172a", flex:1, fontFamily:"'Outfit',sans-serif", letterSpacing:"0.02em" }}>{!bp.isMobile&&titles[view]}</h1>
+      {bp.isTv&&<div style={{ fontSize:"var(--fs-xl)", fontFamily:"monospace", color:"#1e3d6e", fontWeight:700 }}>{clock.toLocaleTimeString("pt-BR", { hour:"2-digit", minute:"2-digit", second:"2-digit" })}</div>}
       {/* User info — apenas aqui, removido do sidebar */}
-      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:bp.isTv?16:10, position:"relative" }}>
         {!bp.isMobile&&(
           <div style={{ textAlign:"right" }}>
-            <div style={{ fontSize:13, fontWeight:600, color:"#0f172a", fontFamily:"'DM Sans',sans-serif" }}>{currentUser.full_name}</div>
-            <div style={{ fontSize:11, color:"#94a3b8", textTransform:"capitalize", fontFamily:"'DM Sans',sans-serif" }}>{grc(currentUser.role).label}</div>
+            <div style={{ fontSize:bp.isTv?"var(--fs-sm)":13, fontWeight:600, color:"#0f172a", fontFamily:"'DM Sans',sans-serif" }}>{currentUser.full_name}</div>
+            <div style={{ fontSize:bp.isTv?"var(--fs-xs)":11, color:"#94a3b8", textTransform:"capitalize", fontFamily:"'DM Sans',sans-serif" }}>{grc(currentUser.role).label}</div>
           </div>
         )}
-        <Avatar user={currentUser} size={32} />
-        <button onClick={onLogout} style={{ background:"none", border:"none", cursor:"pointer", padding:6, borderRadius:6, color:"#94a3b8" }} title="Sair">
-          <Icon name="logOut" size={16} color="#94a3b8" />
+        <button onClick={()=>bp.isMobile&&setProfileOpen(v=>!v)} style={{ border:"none", background:"transparent", padding:0, cursor:bp.isMobile?"pointer":"default" }}>
+          <Avatar user={currentUser} size={bp.isTv?48:32} />
         </button>
+        {bp.isMobile&&profileOpen&&(
+          <div style={{ position:"absolute", top:44, right:0, zIndex:1002, width:220, background:"#fff", border:"1px solid #e2e8f0", borderRadius:10, boxShadow:"0 16px 40px rgba(0,0,0,0.18)", padding:12 }}>
+            <div style={{ fontWeight:700, fontSize:13, color:"#0f172a", fontFamily:"'DM Sans',sans-serif" }}>{currentUser.full_name}</div>
+            <div style={{ fontSize:12, color:"#64748b", marginBottom:10, fontFamily:"'DM Sans',sans-serif" }}>{grc(currentUser.role).label}</div>
+            <button onClick={onLogout} style={{ width:"100%", minHeight:44, border:"1px solid #e2e8f0", borderRadius:8, background:"#fff", cursor:"pointer", fontSize:13, color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>Sair</button>
+          </div>
+        )}
+        {!bp.isMobile&&<button onClick={onLogout} style={{ background:"none", border:"none", cursor:"pointer", padding:6, borderRadius:6, color:"#94a3b8" }} title="Sair">
+          <Icon name="logOut" size={16} color="#94a3b8" />
+        </button>}
       </div>
     </div>
   );
@@ -1347,7 +1392,7 @@ function DetailView({ request, currentUser, updateRequest, setView, showToast, s
 // ─────────────────────────────────────────────
 // DASHBOARD
 // ─────────────────────────────────────────────
-function Dashboard({ requests, currentUser, openRequest, bp, users = [], teams = [] }) {
+function Dashboard({ requests, currentUser, openRequest, bp, users = [], teams = [], loadAllData }) {
   const isAdmin = ["admin","supervisor","gestor"].includes(currentUser.role);
   const vis = isAdmin
     ? requests
@@ -1418,26 +1463,34 @@ function Dashboard({ requests, currentUser, openRequest, bp, users = [], teams =
 
   const recentActivity = [...vis].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,5);
 
+  useEffect(() => {
+    if (!bp.isTv || typeof loadAllData !== "function") return;
+    const id = setInterval(() => {
+      loadAllData();
+    }, 30000);
+    return () => clearInterval(id);
+  }, [bp.isTv, loadAllData]);
+
   return (
     <div style={{ paddingBottom: bp.isMobile ? 80 : 0 }}>
-      <div style={{ display:"grid", gridTemplateColumns:bp.isMobile?"repeat(2,1fr)":"repeat(5,1fr)", gap:12, marginBottom:20 }}>
+      <div style={{ display:"grid", gridTemplateColumns:bp.isMobile?"repeat(2,1fr)":bp.isTablet?"repeat(3,1fr)":"repeat(5,1fr)", gap:bp.isTv?"var(--gap-xl)":bp.isMobile?8:12, marginBottom:bp.isTv?"var(--gap-xl)":20 }}>
         {stats.map(s => (
-          <div key={s.label} style={{ background:"#fff", borderRadius:12, padding:bp.isTv?"20px":"14px 16px", border:"1px solid #e2e8f0" }}>
-            <div style={{ fontSize:11, color:"#64748b", marginBottom:6, fontFamily:"'DM Sans',sans-serif" }}>{s.label}</div>
-            <div style={{ fontSize:bp.isMobile?24:bp.isTv?32:28, fontWeight:700, color:s.value>0?s.color:"#94a3b8", fontFamily:"'Outfit',sans-serif" }}>{s.value}</div>
+          <div key={s.label} style={{ background:"#fff", borderRadius:12, padding:bp.isTv?"clamp(24px, 2vw, 48px)":"clamp(12px, 1vw, 20px)", border:"1px solid #e2e8f0", fontSize:bp.isTv?"1.4em":"1em" }}>
+            <div style={{ fontSize:bp.isTv?"var(--fs-md)":"var(--fs-sm)", color:"#64748b", marginBottom:bp.isTv?14:6, fontFamily:"'DM Sans',sans-serif" }}>{s.label}</div>
+            <div style={{ fontSize:bp.isTv?"clamp(56px, 5vw, 120px)":"var(--fs-2xl)", fontWeight:700, lineHeight:1, color:s.value>0?s.color:"#94a3b8", fontFamily:"'Outfit',sans-serif" }}>{s.value}</div>
           </div>
         ))}
       </div>
 
       {isAdmin && vis.length > 0 && (
-        <div style={{ display:"grid", gridTemplateColumns:bp.isDesktop?"1fr 1fr":"1fr", gap:16, marginBottom:20 }}>
-          <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"18px 20px" }}>
+        <div style={{ display:"grid", gridTemplateColumns:bp.isMobile?"1fr":"1fr 1fr", gap:bp.isTv?"var(--gap-xl)":16, marginBottom:20 }}>
+          <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:bp.isTv?"28px 32px":"18px 20px" }}>
             <div style={{ fontWeight:600, fontSize:13, marginBottom:16, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Volume por Mês</div>
-            <ResponsiveContainer width="100%" height={bp.isTv?220:180}>
+            <ResponsiveContainer width="100%" height={bp.isTv?400:bp.isMobile?220:280}>
               <LineChart data={byMonth}>
-                <XAxis dataKey="name" tick={{ fontSize:11, fill:"#94a3b8" }} />
-                <YAxis tick={{ fontSize:11, fill:"#94a3b8" }} allowDecimals={false} />
-                <Tooltip contentStyle={{ fontSize:12, borderRadius:8, border:"1px solid #e2e8f0" }} />
+                <XAxis dataKey="name" tick={{ fontSize:bp.isTv?18:bp.isMobile?10:12, fill:"#94a3b8" }} />
+                <YAxis tick={{ fontSize:bp.isTv?18:bp.isMobile?10:12, fill:"#94a3b8" }} allowDecimals={false} />
+                <Tooltip contentStyle={{ fontSize:bp.isTv?18:12, borderRadius:8, border:"1px solid #e2e8f0" }} />
                 <Line type="monotone" dataKey="Total" stroke="#1e3d6e" strokeWidth={2} dot={{ r:4 }} name="Total" />
                 <Line type="monotone" dataKey="Finalizadas" stroke="#16a34a" strokeWidth={2} dot={{ r:4 }} name="Finalizadas" />
               </LineChart>
@@ -1445,13 +1498,13 @@ function Dashboard({ requests, currentUser, openRequest, bp, users = [], teams =
           </div>
 
           {byTeam.length > 0 && (
-            <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"18px 20px" }}>
+            <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:bp.isTv?"28px 32px":"18px 20px" }}>
               <div style={{ fontWeight:600, fontSize:13, marginBottom:16, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Chamados por Equipe</div>
-              <ResponsiveContainer width="100%" height={bp.isTv?220:180}>
+              <ResponsiveContainer width="100%" height={bp.isTv?400:bp.isMobile?220:280}>
                 <BarChart data={byTeam} barSize={20}>
-                  <XAxis dataKey="name" tick={{ fontSize:11, fill:"#94a3b8" }} />
-                  <YAxis tick={{ fontSize:11, fill:"#94a3b8" }} allowDecimals={false} />
-                  <Tooltip contentStyle={{ fontSize:12, borderRadius:8, border:"1px solid #e2e8f0" }} />
+                  <XAxis dataKey="name" tick={{ fontSize:bp.isTv?18:bp.isMobile?10:12, fill:"#94a3b8" }} />
+                  <YAxis tick={{ fontSize:bp.isTv?18:bp.isMobile?10:12, fill:"#94a3b8" }} allowDecimals={false} />
+                  <Tooltip contentStyle={{ fontSize:bp.isTv?18:12, borderRadius:8, border:"1px solid #e2e8f0" }} />
                   <Bar dataKey="Abertas" fill="#3b6ea8" radius={[4,4,0,0]} />
                   <Bar dataKey="Finalizadas" fill="#16a34a" radius={[4,4,0,0]} />
                 </BarChart>
@@ -1460,10 +1513,10 @@ function Dashboard({ requests, currentUser, openRequest, bp, users = [], teams =
           )}
 
           {byStatus.length > 0 && (
-            <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:"18px 20px" }}>
+            <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", padding:bp.isTv?"28px 32px":"18px 20px" }}>
               <div style={{ fontWeight:600, fontSize:13, marginBottom:16, fontFamily:"'Outfit',sans-serif", color:"#0f172a" }}>Distribuição por Status</div>
               <div style={{ display:"flex", alignItems:"center", gap:16 }}>
-                <ResponsiveContainer width="50%" height={bp.isTv?220:160}>
+                <ResponsiveContainer width="50%" height={bp.isTv?400:bp.isMobile?220:280}>
                   <PieChart>
                     <Pie data={byStatus} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="value" paddingAngle={2}>
                       {byStatus.map((entry, i) => <Cell key={i} fill={entry.color} />)}
@@ -1588,14 +1641,14 @@ function RequestsView({ requests, currentUser, openRequest, setView, bp, teams =
           {mode==="kanban"&&<button onClick={()=>setShowFin(v=>!v)} style={{ padding:"5px 12px", borderRadius:20, border:`1.5px solid ${showFin?"#16a34a":"#e2e8f0"}`, background:showFin?"#f0fdf4":"#fff", color:showFin?"#16a34a":"#64748b", cursor:"pointer", fontSize:12, fontWeight:showFin?600:400, marginLeft:"auto", fontFamily:"'DM Sans',sans-serif" }}>{showFin?"Ocultar finalizados":"Mostrar finalizados"}</button>}
         </div>
       </div>
-      {mode==="kanban"&&!bp.isMobile&&<KanbanView requests={base} openRequest={openRequest} kanbanCols={kanbanCols} updateRequest={updateRequest} teams={teams} users={users} bp={bp} />}
+      {mode==="kanban"&&<KanbanView requests={base} openRequest={openRequest} kanbanCols={kanbanCols} updateRequest={updateRequest} teams={teams} users={users} bp={bp} />}
       {mode==="list"&&<div style={{ display:"flex", flexDirection:"column", gap:10 }}>{base.map(r=><RequestCard key={r.id} r={r} onClick={()=>openRequest(r.id)} teams={teams} users={users} />)}{!base.length&&<div style={{ background:"#fff", borderRadius:12, border:"2px dashed #e2e8f0", padding:32, textAlign:"center", color:"#94a3b8", fontFamily:"'DM Sans',sans-serif" }}>Nenhuma solicitação encontrada.</div>}</div>}
       {mode==="table"&&!bp.isMobile&&<TableView requests={base} openRequest={openRequest} teams={teams} users={users} />}
     </div>
   );
 }
 
-function DraggableCard({ r, openRequest, teams, users }) {
+function DraggableCard({ r, openRequest, teams, users, bp }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: r.id });
   const t = teamById(teams, r.team_id);
   const p = gp(r.priority);
@@ -1616,9 +1669,9 @@ function DraggableCard({ r, openRequest, teams, users }) {
         if (!isDragging) openRequest(r.id);
       }}
     >
-      <div style={{ background:"#fff", borderRadius:10, border:"1px solid #e2e8f0", padding:"11px 13px", borderLeft:`3px solid ${t?.color||"#e2e8f0"}`, marginBottom:8, boxShadow:isDragging?"0 8px 24px rgba(0,0,0,0.12)":"none" }}>
-        <div style={{ fontSize:10, color:"#94a3b8", marginBottom:3, fontFamily:"monospace" }}>{r.protocol}</div>
-        <div style={{ fontWeight:600, fontSize:13, lineHeight:1.4, marginBottom:8, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div>
+      <div style={{ background:"#fff", borderRadius:10, border:"1px solid #e2e8f0", padding:bp?.isTv?"18px 20px":"11px 13px", borderLeft:`3px solid ${t?.color||"#e2e8f0"}`, marginBottom:8, boxShadow:isDragging?"0 8px 24px rgba(0,0,0,0.12)":"none" }}>
+        <div style={{ fontSize:bp?.isTv?15:10, color:"#94a3b8", marginBottom:3, fontFamily:"monospace" }}>{r.protocol}</div>
+        <div style={{ fontWeight:600, fontSize:bp?.isTv?19:13, lineHeight:1.4, marginBottom:8, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", fontFamily:"'DM Sans',sans-serif" }}>{r.title}</div>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <div style={{ display:"flex", alignItems:"center" }}>
             <span style={{ width:7, height:7, borderRadius:"50%", background:p.color, marginRight:5, flexShrink:0, display:"inline-block" }} />
@@ -1675,22 +1728,22 @@ function KanbanView({ requests, openRequest, kanbanCols, updateRequest, teams = 
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveId(null)}
     >
-      <div style={{ display:"flex", gap:12, overflowX:"auto", paddingBottom:16, alignItems:"flex-start" }}>
+      <div style={{ display:"flex", gap:bp?.isTv?24:12, overflowX:"auto", paddingBottom:16, alignItems:"flex-start", scrollSnapType:bp?.isMobile?"x mandatory":"none" }}>
         {kanbanCols.map(col => {
           const colRequests = requests.filter(r => r.status === col.key);
           const isClosed = ["finalizada","cancelada"].includes(col.key);
           return (
-            <div key={col.key} style={{ minWidth:bp?.isTv?260:220, width:bp?.isTv?260:220, flexShrink:0, opacity:isClosed?0.85:1 }}>
+            <div key={col.key} style={{ minWidth:bp?.isMobile?"85vw":bp?.isTv?360:220, width:bp?.isMobile?"85vw":bp?.isTv?360:220, flexShrink:0, opacity:isClosed?0.85:1, scrollSnapAlign:"start" }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, padding:"6px 8px", borderRadius:8, background:isClosed?"#f8fafc":"transparent" }}>
                 <div style={{ width:9, height:9, borderRadius:"50%", background:col.color, flexShrink:0 }} />
-                <span style={{ fontWeight:600, fontSize:12, color:"#374151", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{col.label}</span>
-                <span style={{ background:col.bg, color:col.color, borderRadius:20, padding:"2px 8px", fontSize:11, fontWeight:700, fontFamily:"'DM Sans',sans-serif" }}>{colRequests.length}</span>
+                <span style={{ fontWeight:600, fontSize:bp?.isTv?18:12, color:"#374151", flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif" }}>{col.label}</span>
+                <span style={{ background:col.bg, color:col.color, borderRadius:20, padding:"2px 8px", fontSize:bp?.isTv?16:11, fontWeight:700, fontFamily:"'DM Sans',sans-serif" }}>{colRequests.length}</span>
               </div>
 
               <SortableContext items={colRequests.map(r => r.id)} strategy={verticalListSortingStrategy}>
                 <DroppableColumn col={col} activeId={activeId}>
                   {colRequests.map(r => (
-                    <DraggableCard key={r.id} r={r} openRequest={openRequest} teams={teams} users={users} />
+                    <DraggableCard key={r.id} r={r} openRequest={openRequest} teams={teams} users={users} bp={bp} />
                   ))}
                   {colRequests.length === 0 && (
                     <div style={{ padding:"18px", textAlign:"center", color:"#cbd5e1", fontSize:12, fontFamily:"'DM Sans',sans-serif" }}>
@@ -2260,6 +2313,25 @@ function AdminTypes({ bp, showToast, requestTypes, setRequestTypes, teams, api, 
         </div>
         <button onClick={() => setModal(true)} style={{ padding:"9px 16px", background:"#1e3d6e", color:"#fff", border:"none", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600, fontFamily:"'DM Sans',sans-serif" }}>+ Adicionar</button>
       </div>
+      {bp.isMobile ? (
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          {requestTypes.map(t => {
+            const team = teams.find(tm => tm.id === t.team_id);
+            return (
+              <div key={t.id} style={{ padding:14, background:"#fff", border:"1px solid #e2e8f0", borderRadius:"var(--radius-md)" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", gap:10, marginBottom:8 }}>
+                  <strong style={{ color:"#1e293b", fontSize:"var(--fs-sm)", fontFamily:"'DM Sans',sans-serif" }}>{t.name}</strong>
+                  <span style={{ fontSize:"var(--fs-xs)", color:"#16a34a", fontWeight:700 }}>Ativo</span>
+                </div>
+                <div style={{ display:"flex", flexDirection:"column", gap:6, fontSize:"var(--fs-xs)", color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>
+                  <span>{team ? team.name : "Sem equipe"}</span>
+                  <span>{t.description || "Sem descrição"}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
       <div style={{ background:"#fff", borderRadius:12, border:"1px solid #e2e8f0", overflow:"auto" }}>
         <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
           <thead>
@@ -2282,6 +2354,7 @@ function AdminTypes({ bp, showToast, requestTypes, setRequestTypes, teams, api, 
           </tbody>
         </table>
       </div>
+      )}
       {modal && (
         <div onClick={() => setModal(false)} style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.5)", zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background:"#fff", borderRadius:14, width:"100%", maxWidth:440, boxShadow:"0 24px 80px rgba(0,0,0,0.2)", overflow:"hidden" }}>
@@ -2385,6 +2458,22 @@ function AuditoriaView({ bp, api }) {
             As ações dos supervisores aparecerão aqui.
           </div>
         </div>
+      ) : bp.isMobile ? (
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          {logs.map(log => (
+            <div key={log.id} style={{ padding:14, background:"#fff", border:"1px solid #e2e8f0", borderRadius:"var(--radius-md)" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", gap:10, marginBottom:8 }}>
+                <strong style={{ color:"#1e293b", fontSize:"var(--fs-sm)", fontFamily:"'DM Sans',sans-serif" }}>{actionLabels[log.action] || log.action}</strong>
+                <span style={{ fontSize:"var(--fs-xs)", color:"#94a3b8", fontFamily:"monospace" }}>{new Date(log.created_at).toLocaleDateString("pt-BR")}</span>
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:6, fontSize:"var(--fs-xs)", color:"#64748b", fontFamily:"'DM Sans',sans-serif" }}>
+                <span>{log.actor_name}</span>
+                <span>{log.entity}</span>
+                <span>{log.description || "Sem descrição"}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e2e8f0", overflow: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -2447,7 +2536,7 @@ export default function ApexSolicitacoes() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [toast, setToast] = useState(null);
   const [dataLoading, setDataLoading] = useState(false);
-  const bp = useBreakpoint();
+  const bp = useResponsiveBreakpoint();
 
   const cacheProfile = (profile) => {
     try {
@@ -2596,9 +2685,9 @@ export default function ApexSolicitacoes() {
   }, []);
 
   useEffect(() => {
-    if (bp.isMobile || bp.isTablet) setSidebarOpen(false);
+    if (bp.isMobile || bp.isTablet || bp.isTv) setSidebarOpen(false);
     else setSidebarOpen(true);
-  }, [bp.isMobile, bp.isTablet]);
+  }, [bp.isMobile, bp.isTablet, bp.isTv]);
 
   useEffect(() => {
     if (!loggedIn || !currentUser) return;
@@ -2883,17 +2972,14 @@ export default function ApexSolicitacoes() {
         fontSize: 14, color: "#0f172a", background: "#f8fafc"
       }}>
         <AppAnimatedBackground />
-        {!bp.isMobile && (
-          <Sidebar
-            currentUser={currentUser}
-            view={view}
-            setView={navigate}
-            open={sidebarOpen}
-            setOpen={setSidebarOpen}
-            bp={bp}
-          />
-        )}
-        {bp.isTablet && sidebarOpen && <div style={{ width: 220, flexShrink: 0 }} />}
+        <Sidebar
+          currentUser={currentUser}
+          view={view}
+          setView={navigate}
+          open={sidebarOpen}
+          setOpen={setSidebarOpen}
+          bp={bp}
+        />
         <div style={{
           flex: 1, overflow: "auto",
           display: "flex", flexDirection: "column", minWidth: 0,
@@ -2903,12 +2989,13 @@ export default function ApexSolicitacoes() {
             currentUser={currentUser}
             view={view}
             setSidebarOpen={setSidebarOpen}
+            sidebarOpen={sidebarOpen}
             bp={bp}
             onLogout={handleLogout}
           />
           <main style={{
             flex: 1,
-            padding: bp.isMobile ? "16px 14px" : "24px 24px",
+            padding: bp.isMobile ? "16px 14px" : bp.isTv ? "var(--gap-xl)" : "24px 24px",
             overflow: "auto",
             position: "relative",
             zIndex: 1
