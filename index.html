@@ -11,11 +11,11 @@
 <script>
   (function() {
     try {
-      var keep = 'apex-session';
+      var keep = { 'apex-session': true, 'apex-profile': true };
       var toRemove = [];
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        if (k && k !== keep && (
+        if (k && !keep[k] && (
           k.startsWith('apex-') ||
           k.startsWith('sb-') ||
           k.indexOf('supabase') !== -1

@@ -2442,21 +2442,59 @@ export default function ApexSolicitacoes() {
   const [dataLoading, setDataLoading] = useState(false);
   const bp = useBreakpoint();
 
+  const cacheProfile = (profile) => {
+    try {
+      localStorage.setItem('apex-profile', JSON.stringify(profile));
+    } catch (err) {
+      console.warn('profile cache write failed:', err);
+    }
+  };
+
+  const readCachedProfile = () => {
+    try {
+      const raw = localStorage.getItem('apex-profile');
+      return raw ? JSON.parse(raw) : null;
+    } catch (err) {
+      console.warn('profile cache read failed:', err);
+      return null;
+    }
+  };
+
+  const clearProfileCache = () => {
+    try {
+      localStorage.removeItem('apex-profile');
+    } catch (err) {
+      console.warn('profile cache cleanup failed:', err);
+    }
+  };
+
   // Verificar sessão ao carregar
   useEffect(() => {
     let mounted = true
     let timeoutId = null
+    const cachedProfile = readCachedProfile()
 
     if (!hasSupabaseConfig) {
       setAuthLoading(false)
       return
     }
 
-    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+    if (cachedProfile?.id && cachedProfile?.is_active) {
+      setCurrentUser(cachedProfile)
+      setLoggedIn(true)
+      setView(cachedProfile.role === "solicitante" ? "my-requests" : "dashboard")
+      setAuthLoading(false)
+      loadAllData()
+    }
+
+    api.getSession().then(async (session) => {
       if (!mounted) return
-      if (error || !session) {
+      if (!session) {
+        clearProfileCache()
         if (mounted) {
           if (timeoutId) clearTimeout(timeoutId)
+          setLoggedIn(false)
+          setCurrentUser(null)
           setAuthLoading(false)
         }
         return
@@ -2465,10 +2503,12 @@ export default function ApexSolicitacoes() {
         const profile = await api.getProfile(session.user.id)
         if (!mounted) return
         if (profile && profile.is_active) {
+          cacheProfile(profile)
           setCurrentUser(profile)
           setLoggedIn(true)
           loadAllData()
         } else {
+          clearProfileCache()
           await supabase.auth.signOut()
         }
       } catch (e) {
@@ -2483,8 +2523,10 @@ export default function ApexSolicitacoes() {
       console.error('getSession error:', err)
       if (mounted) {
         if (timeoutId) clearTimeout(timeoutId)
-        setLoggedIn(false)
-        setCurrentUser(null)
+        if (!cachedProfile?.id) {
+          setLoggedIn(false)
+          setCurrentUser(null)
+        }
         setAuthLoading(false)
       }
     })
@@ -2492,13 +2534,10 @@ export default function ApexSolicitacoes() {
     timeoutId = setTimeout(() => {
       if (mounted) {
         console.warn('Auth timeout')
-        try {
-          localStorage.removeItem('apex-session')
-        } catch (storageErr) {
-          console.warn('Auth timeout storage cleanup failed:', storageErr)
+        if (!cachedProfile?.id) {
+          setLoggedIn(false)
+          setCurrentUser(null)
         }
-        setLoggedIn(false)
-        setCurrentUser(null)
         setAuthLoading(false)
       }
     }, 8000)
@@ -2508,6 +2547,7 @@ export default function ApexSolicitacoes() {
         if (!mounted) return
         if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') return
         if (event === 'SIGNED_OUT') {
+          clearProfileCache()
           setLoggedIn(false)
           setCurrentUser(null)
           setRequests([])
@@ -2520,10 +2560,12 @@ export default function ApexSolicitacoes() {
             const profile = await api.getProfile(session.user.id)
             if (!mounted) return
             if (profile && profile.is_active) {
+              cacheProfile(profile)
               setCurrentUser(profile)
               setLoggedIn(true)
               loadAllData()
             } else {
+              clearProfileCache()
               await supabase.auth.signOut()
             }
           } catch (e) {
@@ -2708,6 +2750,7 @@ export default function ApexSolicitacoes() {
       }
 
       setCurrentUser(profile);
+      cacheProfile(profile);
       setLoggedIn(true);
       setView(profile.role === "solicitante" ? "my-requests" : "dashboard");
       loadAllData();
@@ -2726,6 +2769,7 @@ export default function ApexSolicitacoes() {
 
   const handleLogout = async () => {
     await api.signOut();
+    clearProfileCache();
     setLoggedIn(false);
     setCurrentUser(null);
     setView("dashboard");
