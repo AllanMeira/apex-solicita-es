@@ -5,17 +5,35 @@ const unwrap = ({ data, error }) => {
   return data;
 };
 
+const withTimeout = (promise, ms, message) => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+]);
+
 export async function getSession() {
-  const { data, error } = await supabase.auth.getSession();
+  const { data, error } = await withTimeout(
+    supabase.auth.getSession(),
+    8000,
+    "Tempo esgotado ao verificar sessão"
+  );
   if (error) throw error;
   return data.session;
 }
 
 export async function signInWithEmail(email, password) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  try {
+    localStorage.removeItem("apex-session");
+  } catch {
+    // Ignore storage errors and let Supabase continue the login flow.
+  }
+  const { data, error } = await withTimeout(
+    supabase.auth.signInWithPassword({
+      email,
+      password,
+    }),
+    12000,
+    "Tempo esgotado ao entrar. Tente novamente."
+  );
   if (error) throw error;
   return data;
 }
@@ -72,9 +90,6 @@ export async function updateUserPassword(userId, newPassword, authToken) {
 
 export async function getProfile(userId) {
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return null;
-
     const { data, error } = await supabase
       .from("profiles")
       .select("id, full_name, email, role, is_active, whatsapp, avatar_url, team_id, teams(id, name, color, slug)")

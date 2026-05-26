@@ -2492,6 +2492,11 @@ export default function ApexSolicitacoes() {
     timeoutId = setTimeout(() => {
       if (mounted) {
         console.warn('Auth timeout')
+        try {
+          localStorage.removeItem('apex-session')
+        } catch (storageErr) {
+          console.warn('Auth timeout storage cleanup failed:', storageErr)
+        }
         setLoggedIn(false)
         setCurrentUser(null)
         setAuthLoading(false)
